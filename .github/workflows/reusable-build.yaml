@@ -51,7 +51,7 @@ on:
         value: ${{ jobs.build.outputs.idl_buffer }}
 
 env:
-  SOLANA_VERIFY_VERSION: "0.4.0"
+  SOLANA_VERIFY_VERSION: "0.4.1"
 
 jobs:
   build:
@@ -213,28 +213,28 @@ jobs:
       - name: Write Program Buffer
         uses: Woody4618/github-action/.github/actions/write-program-buffer@main
         id: program-buffer
-        if: inputs.deploy == 'true'
+        if: inputs.deploy
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          buffer-authority-address: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
+          buffer-authority-address: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - name: Write IDL Buffer
         uses: Woody4618/github-action/.github/actions/write-idl-buffer@main
         id: idl-buffer
-        if: inputs.upload_idl == 'true'
+        if: inputs.upload_idl
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          idl-authority: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
+          idl-authority: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - name: Program Upgrade
         uses: Woody4618/github-action/.github/actions/program-upgrade@main
-        if: inputs.deploy == 'true' && inputs.use-squads == 'false'
+        if: inputs.deploy && inputs.use-squads == false
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
@@ -245,7 +245,7 @@ jobs:
 
       - name: IDL Upload
         uses: Woody4618/github-action/.github/actions/idl-upload@main
-        if: inputs.upload_idl == 'true' && inputs.use-squads == 'false'
+        if: inputs.upload_idl && inputs.use-squads == false
         with:
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.DEPLOY_URL }}
@@ -255,7 +255,7 @@ jobs:
       - name: Verify Build
         uses: Woody4618/github-action/.github/actions/verify-build@main
         id: verify-build
-        if: inputs.verify == 'true'
+        if: inputs.verify
         with:
           verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -269,7 +269,7 @@ jobs:
           vault-address: ${{ env.MULTISIG_VAULT }}
 
       - name: Deploy Program (Squads)
-        if: inputs.deploy == 'true' && inputs.use-squads == 'true'
+        if: inputs.deploy && inputs.use-squads
         run: |
           # Install dependencies
           npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
