@@ -8,14 +8,14 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/github-action/.github/actions/extract-versions/
+    - uses: Woody4618/github-action/.github/actions/extract-versions@main
       id: versions
 
-    - uses: Woody4618/github-action/.github/actions/setup/
+    - uses: Woody4618/github-action/.github/actions/setup@main
 
-    - uses: Woody4618/github-action/.github/actions/setup-solana/
+    - uses: Woody4618/github-action/.github/actions/setup-solana@main
 
-    - uses: Woody4618/github-action/.github/actions/setup-anchor/
+    - uses: Woody4618/github-action/.github/actions/setup-anchor@main
       with:
         anchor-version: ${{ env.ANCHOR_VERSION }}
 

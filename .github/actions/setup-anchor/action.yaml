@@ -8,8 +8,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/github-action/.github/actions/setup/
-    - uses: Woody4618/github-action/.github/actions/setup-solana/
+    - uses: Woody4618/github-action/.github/actions/setup@main
+    - uses: Woody4618/github-action/.github/actions/setup-solana@main
 
     - name: Debug Version Values
       shell: bash

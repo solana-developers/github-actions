@@ -17,8 +17,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/github-action/.github/actions/setup/
-    - uses: Woody4618/github-action/.github/actions/setup-anchor/
+    - uses: Woody4618/github-action/.github/actions/setup@main
+    - uses: Woody4618/github-action/.github/actions/setup-anchor@main
     - run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
       shell: bash
       env:
