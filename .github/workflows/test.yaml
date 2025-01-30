@@ -22,6 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: ./.github/actions/run-tests/
+      - uses: Woody4618/github-action/.github/actions/run-tests/
         with:
           program: ${{ github.event.inputs.program }}

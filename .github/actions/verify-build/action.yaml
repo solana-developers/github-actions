@@ -47,9 +47,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/setup/
-    - uses: ./.github/actions/setup-solana/
-    - uses: ./.github/actions/setup-solana-verify/
+    - uses: Woody4618/github-action/.github/actions/setup/
+    - uses: Woody4618/github-action/.github/actions/setup-solana/
+    - uses: Woody4618/github-action/.github/actions/setup-solana-verify/
       with:
         verify-version: ${{ inputs.verify-version }}
 
