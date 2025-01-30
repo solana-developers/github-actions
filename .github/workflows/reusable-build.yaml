@@ -270,7 +270,7 @@ jobs:
 
       - name: Deploy Program (Squads)
         if: inputs.deploy && inputs.use-squads
-        uses: Woody4618/squads-program-action@main
+        uses: Woody4618/squads-program-action@fix
         with:
           rpc: ${{ env.DEPLOY_URL }}
           program: ${{ env.PROGRAM_ID }}
