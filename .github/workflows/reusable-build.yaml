@@ -34,14 +34,23 @@ on:
         default: false
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
+        required: false
       MAINNET_SOLANA_DEPLOY_URL:
+        required: false
       DEVNET_DEPLOYER_KEYPAIR:
+        required: false
       MAINNET_DEPLOYER_KEYPAIR:
+        required: false
       PROGRAM_ADDRESS_KEYPAIR:
+        required: false
       DEVNET_MULTISIG:
+        required: false
       DEVNET_MULTISIG_VAULT:
+        required: false
       MAINNET_MULTISIG:
+        required: false
       MAINNET_MULTISIG_VAULT:
+        required: false
 
 env:
   SOLANA_VERIFY_VERSION: "0.4.0"
