@@ -32,6 +32,11 @@ on:
         required: false
         type: boolean
         default: false
+      priority-fee:
+        description: "Priority fee in microlamports"
+        required: false
+        type: string
+        default: "100000"
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
       MAINNET_SOLANA_DEPLOY_URL:
@@ -220,6 +225,7 @@ jobs:
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           buffer-authority-address: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
+          priority-fee: ${{ inputs.priority-fee }}
 
       - name: Write IDL Buffer
         uses: Woody4618/github-action/.github/actions/write-idl-buffer@main

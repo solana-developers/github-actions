@@ -16,6 +16,10 @@ inputs:
   buffer-authority-address:
     description: "The buffer authority address. Could be the local address or the squads authority"
     required: true
+  priority-fee:
+    description: "Priority fee in microlamports"
+    required: false
+    default: "100000"
 
 outputs:
   buffer:
@@ -99,7 +103,7 @@ runs:
             --url ${{ inputs.rpc-url }} \
             --keypair ./deploy-keypair.json \
             --max-sign-attempts 100 \
-            --with-compute-unit-price 100000 \
+            --with-compute-unit-price ${{ inputs.priority-fee }} \
             --use-rpc \
             2>&1)
 
