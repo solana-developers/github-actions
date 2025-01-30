@@ -102,8 +102,7 @@ jobs:
         with:
           anchor-version: ${{ env.ANCHOR_VERSION }}
 
-      - name: Deploy Program (Squads)
-        if: inputs.deploy == 'true' && inputs.use-squads == 'true'
+      - name: Deploy Program (Squads)        
         run: |
           # Install dependencies
           npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
