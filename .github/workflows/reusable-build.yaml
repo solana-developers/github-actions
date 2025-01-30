@@ -34,23 +34,21 @@ on:
         default: false
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
-        required: false
       MAINNET_SOLANA_DEPLOY_URL:
-        required: false
       DEVNET_DEPLOYER_KEYPAIR:
-        required: false
       MAINNET_DEPLOYER_KEYPAIR:
-        required: false
       PROGRAM_ADDRESS_KEYPAIR:
-        required: false
       DEVNET_MULTISIG:
-        required: false
       DEVNET_MULTISIG_VAULT:
-        required: false
       MAINNET_MULTISIG:
-        required: false
       MAINNET_MULTISIG_VAULT:
-        required: false
+    outputs:
+      buffer:
+        description: "Program buffer address"
+        value: ${{ jobs.build.outputs.buffer }}
+      idl_buffer:
+        description: "IDL buffer address"
+        value: ${{ jobs.build.outputs.idl_buffer }}
 
 env:
   SOLANA_VERIFY_VERSION: "0.4.0"
@@ -59,12 +57,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      buffer: ${{ steps.program-buffer.outputs.buffer }}
+      idl_buffer: ${{ steps.idl-buffer.outputs.buffer }}
     steps:
       - uses: actions/checkout@v3
       - name: Set deployment variables
         run: |
           # Network specific variables
-          IS_MAINNET="${{ github.event.inputs.network == 'mainnet' }}"
+          IS_MAINNET="${{ inputs.network == 'mainnet' }}"
 
           # Set URLs and Keys based on network
           if [ "$IS_MAINNET" = "true" ]; then
@@ -100,7 +101,7 @@ jobs:
 
       - name: Set Program Variables
         run: |
-          PROGRAM="${{ github.event.inputs.program || 'transaction-example' }}"
+          PROGRAM="${{ inputs.program || 'transaction-example' }}"
           PROGRAM_NAME=${PROGRAM//-/_}
           echo "Looking for program ${PROGRAM_NAME} in Anchor.toml"
           cat ./Anchor.toml
@@ -144,14 +145,14 @@ jobs:
       - uses: ./.github/actions/build-anchor/
         with:
           testing: false
-          devnet: ${{ github.event.inputs.network == 'devnet' }}
+          devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
 
       - uses: ./.github/actions/build-verified/
         id: build-verified
         with:
           verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
-          devnet: ${{ github.event.inputs.network == 'devnet' }}
+          devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
           program-id: ${{ env.PROGRAM_ID }}
 
@@ -206,26 +207,26 @@ jobs:
 
       - uses: ./.github/actions/write-program-buffer/
         id: program-buffer
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        if: inputs.deploy == 'true'
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          buffer-authority-address: ${{ github.event.inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS  }}
+          buffer-authority-address: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - uses: ./.github/actions/write-idl-buffer/
         id: idl-buffer
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_idl == 'true'
+        if: inputs.upload_idl == 'true'
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          idl-authority: ${{ github.event.inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS  }}
+          idl-authority: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - uses: ./.github/actions/program-upgrade/
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && github.event.inputs.use-squads == 'false'
+        if: inputs.deploy == 'true' && inputs.use-squads == 'false'
         with:
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
@@ -235,7 +236,7 @@ jobs:
           program-keypair: ${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}
 
       - uses: ./.github/actions/idl-upload/
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_idl == 'true' && github.event.inputs.use-squads == 'false'
+        if: inputs.upload_idl == 'true' && inputs.use-squads == 'false'
         with:
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.DEPLOY_URL }}
@@ -244,21 +245,21 @@ jobs:
 
       - uses: ./.github/actions/verify-build/
         id: verify-build
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.verify == 'true'
+        if: inputs.verify == 'true'
         with:
           verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
-          network: ${{ github.event.inputs.network }}
+          network: ${{ inputs.network }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           repo-url: ${{ github.server_url }}/${{ github.repository }}
           commit-hash: ${{ github.sha }}
-          use-squads: ${{ github.event.inputs.use-squads }}
+          use-squads: ${{ inputs.use-squads }}
           vault-address: ${{ env.MULTISIG_VAULT }}
 
       - name: Deploy Program (Squads)
-        if: github.event.inputs.deploy == 'true' && github.event.inputs.use-squads == 'true'
+        if: inputs.deploy == 'true' && inputs.use-squads == 'true'
         run: |
           # Install dependencies
           npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
