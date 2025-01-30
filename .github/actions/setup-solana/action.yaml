@@ -1,0 +1,39 @@
+name: "Setup Solana"
+description: "Setup Solana"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v2
+      name: Cache Solana Tool Suite
+      id: cache-solana
+      with:
+        path: |
+          ~/.cache/solana/
+          ~/.local/share/solana/
+        key: solana-${{ runner.os }}-v0001-${{ env.SOLANA_CLI_VERSION }}
+    - name: Install Solana
+      shell: bash
+      if: steps.cache-solana.outputs.cache-hit != 'true'
+      run: |
+        # Parse version numbers
+        MAJOR=$(echo $SOLANA_CLI_VERSION | cut -d. -f1)
+        MINOR=$(echo $SOLANA_CLI_VERSION | cut -d. -f2)
+        PATCH=$(echo $SOLANA_CLI_VERSION | cut -d. -f3)
+
+        # Determine which URL to use based on version
+        if [ "$MAJOR" -eq 1 ] && [ "$MINOR" -eq 18 ] && [ "$PATCH" -le 23 ]; then
+          INSTALL_URL="https://release.solana.com/v${SOLANA_CLI_VERSION}/install"
+        else
+          INSTALL_URL="https://release.anza.xyz/v${SOLANA_CLI_VERSION}/install"
+        fi
+
+        echo "Installing Solana from: $INSTALL_URL"
+        sh -c "$(curl -sSfL $INSTALL_URL)"
+      env:
+        SOLANA_CLI_VERSION: ${{ env.SOLANA_CLI_VERSION }}
+    - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+      shell: bash
+    - run: solana-keygen new -s --no-bip39-passphrase --force
+      shell: bash
+    - run: solana config set --url localhost
+      shell: bash

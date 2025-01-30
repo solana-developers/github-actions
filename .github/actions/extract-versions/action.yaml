@@ -1,0 +1,47 @@
+name: "Extract Versions"
+description: "Extracts Solana and Anchor versions from Cargo.lock"
+outputs:
+  solana_version:
+    description: "Detected Solana version"
+    value: ${{ steps.extract.outputs.solana_version }}
+  anchor_version:
+    description: "Detected Anchor version"
+    value: ${{ steps.extract.outputs.anchor_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: extract
+      shell: bash
+      run: |
+        # Extract Solana version from Cargo.lock or use override
+        if [ -n "${{ github.event.inputs.solana_version }}" ]; then
+          SOLANA_VERSION="${{ github.event.inputs.solana_version }}"
+          echo "Using override Solana version: ${SOLANA_VERSION}"
+        else
+          SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+          echo "Detected Solana version: ${SOLANA_VERSION}"
+        fi
+        echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
+        echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
+        echo "SOLANA_CLI_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
+
+        # Extract Anchor version from Cargo.lock or use override
+        if [ -n "${{ github.event.inputs.anchor_version }}" ]; then
+          ANCHOR_VERSION="${{ github.event.inputs.anchor_version }}"
+          echo "Using override Anchor version: ${ANCHOR_VERSION}"
+        else
+          ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+          echo "Detected Anchor version: ${ANCHOR_VERSION}"
+        fi
+        echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
+        echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
+
+        # Debug environment variables
+        echo "=== Environment Variables Debug ==="
+        echo "Content of GITHUB_ENV file:"
+        cat $GITHUB_ENV
+        echo "=== Direct Environment Variables ==="
+        echo "SOLANA_VERSION: $SOLANA_VERSION"
+        echo "ANCHOR_VERSION: $ANCHOR_VERSION"
+        echo "==========================="

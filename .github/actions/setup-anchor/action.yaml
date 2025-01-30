@@ -1,0 +1,53 @@
+name: "Setup Anchor"
+description: "Setup Anchor"
+inputs:
+  anchor-version:
+    description: "Version of Anchor to install"
+    required: false
+    default: "0.30.1"
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup/
+    - uses: ./.github/actions/setup-solana/
+
+    - name: Debug Version Values
+      shell: bash
+      run: |
+        echo "=== Debug Version Information ==="
+        echo "Direct input version: ${{ inputs.anchor-version }}"
+        echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}"
+        echo "========================="
+
+    - uses: actions/cache@v2
+      name: Cache Anchor Cli
+      id: cache-anchor-cli
+      with:
+        path: |
+          ~/.cargo/bin/anchor
+        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}
+
+    - name: Install Anchor CLI
+      shell: bash
+      if: steps.cache-anchor-cli.outputs.cache-hit != 'true'
+      run: |
+        echo "=== Installation Debug Info ==="
+        echo "1. Raw input version: '${{ inputs.anchor-version }}'"
+        echo "2. Version in variable: '${ANCHOR_VERSION}'"
+        echo "3. Full tag that will be used: 'v${{ inputs.anchor-version }}'"
+        echo "4. Cache key being used: 'anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}'"
+        echo "=== Starting Installation ==="
+        cargo install --git https://github.com/coral-xyz/anchor --tag "v${{ inputs.anchor-version }}" anchor-cli --force
+        echo "=== Installation Complete ==="
+        anchor --version
+
+    - uses: actions/cache@v2
+      name: Cache Toml Cli
+      id: cache-toml-cli
+      with:
+        path: |
+          ~/.cargo/bin/toml
+        key: toml-cli-${{ runner.os }}-v0002
+    - run: (cargo install toml-cli || true)
+      if: steps.cache-toml-cli.outputs.cache-hit != 'true'
+      shell: bash

@@ -1,0 +1,35 @@
+name: "Setup Solana Verify"
+description: "Sets up solana-verify with caching"
+
+inputs:
+  verify-version:
+    description: "Version of solana-verify to install"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Debug Version Values
+      shell: bash
+      run: |
+        echo "=== Debug Version Information ==="
+        echo "Using solana-verify version: ${{ inputs.verify-version }}"
+        echo "Cache key being used: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}"
+        echo "========================="
+
+    - uses: actions/cache@v2
+      name: Cache Solana Verify
+      id: cache-solana-verify
+      with:
+        path: |
+          ~/.cargo/bin/solana-verify
+        key: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}
+
+    - name: Install Solana Verify
+      if: steps.cache-solana-verify.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install solana-verify --version ${{ inputs.verify-version }}
+
+    - name: Verify Installation
+      shell: bash
+      run: solana-verify --version 

@@ -1,0 +1,45 @@
+name: "Build Verified"
+description: "Builds a Solana program using solana-verify"
+inputs:
+  devnet:
+    description: "Whether to use devnet feature"
+    required: false
+    default: "false"
+  testing:
+    description: "Whether to use devnet feature"
+    required: false
+    default: "false"
+  program:
+    description: "The program to build and upload"
+    required: true
+  program-id:
+    description: "The program id of the program we are uploading"
+    required: true
+  verify-version:
+    description: "Version of solana-verify to use"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup/
+    - uses: ./.github/actions/setup-anchor/
+    - uses: ./.github/actions/setup-solana-verify/
+      with:
+        verify-version: ${{ inputs.verify-version }}
+
+    # Add Docker socket mounting
+    - name: Setup Docker
+      shell: bash
+      run: |
+        sudo chmod 666 /var/run/docker.sock
+
+    - name: Build Verified
+      shell: bash
+      run: |
+        FEATURES=""
+        if [ "${{ inputs.devnet }}" = "true" ]; then
+          FEATURES="--features devnet"
+        fi
+        # Run solana-verify directly without Docker
+        ~/.cargo/bin/solana-verify build --library-name ${{ inputs.program }} -- $FEATURES

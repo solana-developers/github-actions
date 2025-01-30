@@ -1,0 +1,27 @@
+name: Test Program
+
+on:
+  push:
+    branches: ["*"]
+    paths:
+      - "programs/**"
+      - "tests/**"
+      - "Anchor.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
+    inputs:
+      program:
+        description: "Program to test"
+        required: true
+        default: "transaction_example"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ./.github/actions/run-tests/
+        with:
+          program: ${{ github.event.inputs.program }}

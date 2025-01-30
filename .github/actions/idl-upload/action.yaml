@@ -1,0 +1,45 @@
+name: "Upload IDL"
+description: "Uploads an anchor program IDL"
+inputs:
+  program-id:
+    description: "The program id of the program we are uploading"
+    required: true
+  rpc-url:
+    description: "The Solana network"
+    required: true
+  keypair:
+    description: "The keypair to use for deploys"
+    required: true
+  idl-buffer:
+    description: "The IDL buffer address from buffer deploy"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup/
+    - uses: ./.github/actions/setup-anchor/
+    - run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
+      shell: bash
+      env:
+        DEPLOY_KEYPAIR: ${{ inputs.keypair }}
+
+    - name: Upload IDL
+      uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: |
+          echo "Checking if IDL exists for program ${{ inputs.program-id }}"
+          if ! anchor idl fetch ${{ inputs.program-id }} --provider.cluster ${{ inputs.rpc-url }} > /dev/null 2>&1; then
+            echo "IDL not found, initializing..."
+            anchor idl init --filepath ./target/idl/${{ env.PROGRAM_NAME }}.json ${{ inputs.program-id }} --provider.cluster ${{ inputs.rpc-url }} --provider.wallet ./deploy-keypair.json
+          else
+            echo "IDL found, setting buffer..."
+            anchor idl set-buffer --buffer ${{ inputs.idl-buffer }} ${{ inputs.program-id }} --provider.cluster ${{ inputs.rpc-url }} --provider.wallet ./deploy-keypair.json
+          fi
+
+    - run: rm ./deploy-keypair.json
+      shell: bash
+      if: always() 

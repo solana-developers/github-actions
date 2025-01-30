@@ -1,0 +1,43 @@
+name: "Build Anchor"
+description: "Build Anchor"
+inputs:
+  testing:
+    description: "Whether to run tests"
+    required: false
+    default: "true"
+  devnet:
+    description: "Whether to build for devnet"
+    required: false
+    default: "false"
+  program:
+    description: "Program to build"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup/
+    - uses: ./.github/actions/setup-solana/
+    - uses: ./.github/actions/setup-anchor/
+    - name: Build Program
+      shell: bash
+      run: |
+        echo "Building Anchor program: ${{ inputs.program }} to get IDL"
+        anchor build -p ${{ inputs.program }}
+    - name: Copy artifacts from container
+      shell: bash
+      run: |
+        mkdir -p ./build-artifacts/so
+        mkdir -p ./build-artifacts/idl
+        
+        echo "Current working directory: $(pwd)"
+        echo "Listing target directory:"
+        ls -la target/deploy/
+        ls -la target/idl/
+        
+        # Direct copy without using Docker commands
+        cp -v target/deploy/${{ inputs.program }}.so ./build-artifacts/so/
+        cp -v target/idl/${{ inputs.program }}.json ./build-artifacts/idl/
+        
+        echo "Checking copied files:"
+        ls -la ./build-artifacts/so/
+        ls -la ./build-artifacts/idl/
