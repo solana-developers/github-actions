@@ -84,10 +84,11 @@ jobs:
             echo "MULTISIG_VAULT=${{ secrets.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
           fi
 
-      - uses: ./.github/actions/extract-versions/
-        id: versions
+      - name: Extract Versions
+        uses: Woody4618/github-action/.github/actions/extract-versions@v0.1.0
 
-      - uses: ./.github/actions/setup/
+      - name: Setup Environment
+        uses: Woody4618/github-action/.github/actions/setup@v0.1.0
 
       - name: Debug Environment Before Anchor Setup
         run: |
@@ -96,10 +97,10 @@ jobs:
           echo "==========================="
 
       - name: Install Solana
-        uses: ./.github/actions/setup-solana
+        uses: Woody4618/github-action/.github/actions/setup-solana@v0.1.0
 
       - name: Install Anchor
-        uses: ./.github/actions/setup-anchor
+        uses: Woody4618/github-action/.github/actions/setup-anchor@v0.1.0
         with:
           anchor-version: ${{ env.ANCHOR_VERSION }}
 
@@ -146,13 +147,15 @@ jobs:
           echo "Anchor.toml contents:"
           cat Anchor.toml
 
-      - uses: ./.github/actions/build-anchor/
+      - name: Build Anchor
+        uses: Woody4618/github-action/.github/actions/build-anchor@v0.1.0
         with:
           testing: false
           devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
 
-      - uses: ./.github/actions/build-verified/
+      - name: Build Verified
+        uses: Woody4618/github-action/.github/actions/build-verified@v0.1.0
         id: build-verified
         with:
           verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
@@ -209,7 +212,8 @@ jobs:
           echo "SO file: ./artifacts/build/${{ env.PROGRAM_NAME }}-so/target/deploy/${{ env.PROGRAM_NAME }}.so"
           echo "IDL file: ./artifacts/build/${{ env.PROGRAM_NAME }}-idl/target/idl/${{ env.PROGRAM_NAME }}.json"
 
-      - uses: ./.github/actions/write-program-buffer/
+      - name: Write Program Buffer
+        uses: Woody4618/github-action/.github/actions/write-program-buffer@v0.1.0
         id: program-buffer
         if: inputs.deploy == 'true'
         with:
@@ -219,7 +223,8 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           buffer-authority-address: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
-      - uses: ./.github/actions/write-idl-buffer/
+      - name: Write IDL Buffer
+        uses: Woody4618/github-action/.github/actions/write-idl-buffer@v0.1.0
         id: idl-buffer
         if: inputs.upload_idl == 'true'
         with:
@@ -229,7 +234,8 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           idl-authority: ${{ inputs.use-squads == 'true' && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
-      - uses: ./.github/actions/program-upgrade/
+      - name: Program Upgrade
+        uses: Woody4618/github-action/.github/actions/program-upgrade@v0.1.0
         if: inputs.deploy == 'true' && inputs.use-squads == 'false'
         with:
           program-id: ${{ env.PROGRAM_ID }}
@@ -239,7 +245,8 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           program-keypair: ${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}
 
-      - uses: ./.github/actions/idl-upload/
+      - name: IDL Upload
+        uses: Woody4618/github-action/.github/actions/idl-upload@v0.1.0
         if: inputs.upload_idl == 'true' && inputs.use-squads == 'false'
         with:
           program-id: ${{ env.PROGRAM_ID }}
@@ -247,7 +254,8 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           idl-buffer: ${{ steps.idl-buffer.outputs.buffer }}
 
-      - uses: ./.github/actions/verify-build/
+      - name: Verify Build
+        uses: Woody4618/github-action/.github/actions/verify-build@v0.1.0
         id: verify-build
         if: inputs.verify == 'true'
         with:
