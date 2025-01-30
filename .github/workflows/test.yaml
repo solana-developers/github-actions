@@ -18,6 +18,10 @@ on:
 
 jobs:
   test:
-    uses: ./.github/workflows/reusable_test.yaml
-    with:
-      program: ${{ github.event.inputs.program || 'transaction_example' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ./.github/actions/run-tests/
+        with:
+          program: ${{ github.event.inputs.program }}

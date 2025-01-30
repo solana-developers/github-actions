@@ -65,6 +65,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
       - name: Set deployment variables
         run: |
           # Network specific variables
