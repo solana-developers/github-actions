@@ -270,21 +270,12 @@ jobs:
 
       - name: Deploy Program (Squads)
         if: inputs.deploy && inputs.use-squads
-        run: |
-          git clone https://github.com/Woody4618/github-action.git scripts
-          
-          # Install dependencies
-          npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
-
-          echo "PDA Transaction: ${{ steps.verify-build.outputs.pda_tx }}"
-
-          # Run upgrade script
-          npx ts-node scripts/squad-upgrade.ts \
-            --rpc ${{ env.DEPLOY_URL }} \
-            --program ${{ env.PROGRAM_ID }} \
-            --buffer ${{ steps.program-buffer.outputs.buffer }} \
-            --idl-buffer ${{ steps.idl-buffer.outputs.buffer }} \
-            --multisig ${{ env.MULTISIG }} \
-            --keypair <(echo '${{ env.DEPLOYER_KEYPAIR }}') \
-            --name "Deploy ${{ env.PROGRAM_NAME }}" \
-            --pda-tx '${{ steps.verify-build.outputs.pda_tx }}'
+        uses: Woody4618/squads-program-action@main
+        with:
+          rpc: ${{ env.DEPLOY_URL }}
+          program: ${{ env.PROGRAM_ID }}
+          buffer: ${{ steps.program-buffer.outputs.buffer }}
+          idl-buffer: ${{ steps.idl-buffer.outputs.buffer }}
+          multisig: ${{ env.MULTISIG }}
+          keypair: ${{ env.DEPLOYER_KEYPAIR }}
+          pda-tx: ${{ steps.verify-build.outputs.pda_tx }}
