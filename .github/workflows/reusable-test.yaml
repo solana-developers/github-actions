@@ -1,0 +1,37 @@
+name: Reusable Test Program
+
+on:
+  workflow_call:
+    inputs:
+      program:
+        description: "Program to test"
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ./.github/actions/extract-versions/
+        id: versions
+
+      - uses: ./.github/actions/setup/
+
+      - name: Install Solana
+        uses: ./.github/actions/setup-solana
+
+      - name: Install Anchor
+        uses: ./.github/actions/setup-anchor
+        with:
+          anchor-version: ${{ env.ANCHOR_VERSION }}
+
+      - name: Run Tests
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+          CARGO_NET_RETRY: 10
+          RUST_BACKTRACE: 1
+        run: |
+          echo "Running tests for program: ${{ inputs.program }}"
+          anchor test
