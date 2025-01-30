@@ -190,7 +190,7 @@ jobs:
 
       - name: Store so files
         if: ${{ !env.ACT }} # Only run on GitHub Actions, skip for local act runs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PROGRAM_NAME }}-so
           path: |
@@ -198,7 +198,7 @@ jobs:
 
       - name: Store idl files
         if: ${{ !env.ACT }} # Only run on GitHub Actions, skip for local act runs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PROGRAM_NAME }}-idl
           path: |
