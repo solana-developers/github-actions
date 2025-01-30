@@ -102,25 +102,6 @@ jobs:
         with:
           anchor-version: ${{ env.ANCHOR_VERSION }}
 
-      - name: Deploy Program (Squads)        
-        run: |
-          # Install dependencies
-          npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
-
-          echo "PDA Transaction: ${{ steps.verify-build.outputs.pda_tx }}"
-
-          # Run upgrade script
-          npx ts-node scripts/squad-upgrade.ts \
-            --rpc ${{ env.DEPLOY_URL }} \
-            --program ${{ env.PROGRAM_ID }} \
-            --buffer ${{ steps.program-buffer.outputs.buffer }} \
-            --idl-buffer ${{ steps.idl-buffer.outputs.buffer }} \
-            --multisig ${{ env.MULTISIG }} \
-            --keypair <(echo '${{ env.DEPLOYER_KEYPAIR }}') \
-            --name "Deploy ${{ env.PROGRAM_NAME }}" \
-            --pda-tx '${{ steps.verify-build.outputs.pda_tx }}'
-  
-
       - name: Set Program Variables
         run: |
           PROGRAM="${{ inputs.program || 'transaction-example' }}"
