@@ -13,8 +13,7 @@ import {
 import { idlAddress } from "@coral-xyz/anchor/dist/cjs/idl";
 import * as yargs from "yargs";
 import {
-  sendTransaction,
-  type TxStatusUpdate,
+  sendTransaction
 } from "./transaction-helpers";
 
 const BPF_UPGRADE_LOADER_ID = new PublicKey(

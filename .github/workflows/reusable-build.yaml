@@ -271,6 +271,8 @@ jobs:
       - name: Deploy Program (Squads)
         if: inputs.deploy && inputs.use-squads
         run: |
+          git clone https://github.com/Woody4618/github-action.git scripts
+          
           # Install dependencies
           npm install @sqds/multisig @solana/web3.js @coral-xyz/anchor yargs
 
