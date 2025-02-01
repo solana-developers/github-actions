@@ -15,8 +15,9 @@ runs:
       shell: bash
       run: |
         echo "=== Debug Version Information ==="
-        echo "Direct input version: ${{ inputs.anchor-version }}"
-        echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}"
+        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
+        echo "Using Anchor version: $VERSION"
+        echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-$VERSION"
         echo "========================="
 
     - uses: actions/cache@v2
@@ -25,19 +26,17 @@ runs:
       with:
         path: |
           ~/.cargo/bin/anchor
-        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}
+        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version || env.ANCHOR_VERSION }}
 
     - name: Install Anchor CLI
       shell: bash
       if: steps.cache-anchor-cli.outputs.cache-hit != 'true'
       run: |
+        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
         echo "=== Installation Debug Info ==="
-        echo "1. Raw input version: '${{ inputs.anchor-version }}'"
-        echo "2. Version in variable: '${ANCHOR_VERSION}'"
-        echo "3. Full tag that will be used: 'v${{ inputs.anchor-version }}'"
-        echo "4. Cache key being used: 'anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version }}'"
+        echo "Installing Anchor version: $VERSION"
         echo "=== Starting Installation ==="
-        cargo install --git https://github.com/coral-xyz/anchor --tag "v${{ inputs.anchor-version }}" anchor-cli --force
+        cargo install --git https://github.com/coral-xyz/anchor --tag "v$VERSION" anchor-cli --force
         echo "=== Installation Complete ==="
         anchor --version
 
