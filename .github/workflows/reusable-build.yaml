@@ -115,8 +115,6 @@ jobs:
 
       - name: Install Anchor
         uses: Woody4618/github-action/.github/actions/setup-anchor@main
-        with:
-          anchor-version: ${{ env.ANCHOR_VERSION }}
 
       - name: Set Program Variables
         run: |
