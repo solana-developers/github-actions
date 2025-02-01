@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         default: "100000"
+      vault-index:
+        description: "Index of the vault to use for the multisig"
+        required: false
+        type: string
+        default: "0"
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
       MAINNET_SOLANA_DEPLOY_URL:
@@ -68,6 +73,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate network
+        if: inputs.network != 'devnet' && inputs.network != 'mainnet'
+        run: |
+          echo "Error: network must be either 'devnet' or 'mainnet'"
+          exit 1
 
       - name: Set deployment variables
         run: |
@@ -274,7 +285,7 @@ jobs:
           use-squads: ${{ inputs.use-squads }}
           vault-address: ${{ env.MULTISIG_VAULT }}
 
-      - name: Deploy Program (Squads)
+      - name: Create squads program upgrade transaction (set Idl buffer, verify pda, set program buffer)
         if: inputs.deploy && inputs.use-squads
         uses: Woody4618/squads-program-action@main
         with:
@@ -284,4 +295,6 @@ jobs:
           idl-buffer: ${{ steps.idl-buffer.outputs.buffer }}
           multisig: ${{ env.MULTISIG }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
+          priority-fee: ${{ inputs.priority-fee }}
+          vault-index: ${{ inputs.vault-index }}
           pda-tx: ${{ steps.verify-build.outputs.pda_tx }}
