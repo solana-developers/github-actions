@@ -4,7 +4,6 @@ inputs:
   anchor-version:
     description: "Version of Anchor to install"
     required: false
-    default: "${{ env.ANCHOR_VERSION }}"
 
 runs:
   using: "composite"
