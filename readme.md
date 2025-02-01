@@ -166,9 +166,11 @@ act -W .github/workflows/build.yaml \
 - [ ] Skip anchor build when native program build
 - [ ] Make verify build and anchor build in parallel
 - [x] Trigger release build on tag push
-- [ ] Trigger devnet releases on develop branch?
+- [x] Trigger devnet releases on develop branch?
 - [x] Make solana verify also work locally using cat
 - [x] Use keypairs to find deployer address to remove 2 secrets 
+- [x] Add priority fees
+- [x] Add extend program if needed 
 - [ ] Bundle the needed TS scripts with the .github actions for easier copy paste  
 
 ### Testing & Integration
@@ -177,32 +179,6 @@ act -W .github/workflows/build.yaml \
   - Research support for different test frameworks
 - [ ] Add Codama support
 - [ ] Add to solana helpers -> release
-
-Run the squads program upgrade script locally:
-
-```bash
-# First install dependencies
-npm install @sqds/multisig @solana/web3.js yargs
-
-# Run the script
-npx ts-node scripts/program-upgrade.ts \
-  --rpc "https://api.devnet.solana.com" \
-  --program "BhV84MZrRnEvtWLdWMRJGJr1GbusxfVMHAwc3pq92g4z" \
-  --buffer "Dgk3oo1evP9GWdHKs7XqpDYYemvv798Vqr9oTnc67duD" \
-  --multisig "E5b2b9t5aUM88SugYgVRz5e8jgGdEp2D6Zpg8FDjWBrL" \
-  --member "5vJwnLeyjV8uNJSp1zn7VLW8GwiQbcsQbGaVSwRmkE4r" \
-  --name "Deploy transaction_example"
-```
-
-This is a simple example of a squads transfer in case you want to test the integration first. 
-```bash
-npx ts-node scripts/squad-transfer.ts \
- --rpc "https://api.mainnet-beta.solana.com" \
- --multisig "FJviNjW3L2u2kR4TPxzUNpfe2ZjrULCRhQwWEu3LGzny" \
- --member "5vJwnLeyjV8uNJSp1zn7VLW8GwiQbcsQbGaVSwRmkE4r" \
- --recipient "5vJwnLeyjV8uNJSp1zn7VLW8GwiQbcsQbGaVSwRmkE4r" \
- --amount 0.002 --keypair ~/.config/solana/id.json
-```
 
 Close Buffer:
 
@@ -214,11 +190,10 @@ solana program show --buffers --buffer-authority <You multisig vault address>
 npx ts-node scripts/squad-closebuffer.ts \
  --rpc "https://api.mainnet-beta.solana.com" \
  --multisig "FJviNjW3L2u2kR4TPxzUNpfe2ZjrULCRhQwWEu3LGzny" \
- --buffer "FmikdfxzEdbC8fTAEYtchcXS3egnfYNhTthjvrHLZLUd" \
+ --buffer "7SGJSG8aoZj39NeAkZvbUvsPDMRcUUrhRhPzgzKv7743" \
  --keypair ~/.config/solana/id.json \
  --program "BhV84MZrRnEvtWLdWMRJGJr1GbusxfVMHAwc3pq92g4z"
 ```
-
 
 ### Notes
 
@@ -229,4 +204,4 @@ npx ts-node scripts/squad-closebuffer.ts \
 
 #### additional notes
 - IDL must be upgraded before program upgrade instruction other wise it will fail 
-- Buffer authority and program upgrade cannot be in the same transaction for some reason (at least using squads)
+- Buffer authority and program upgrade cannot be in the same transaction for some reason (at least using squads) thats why its set during the workflow and not in the squads scripts
