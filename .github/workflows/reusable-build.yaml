@@ -70,9 +70,21 @@ jobs:
     outputs:
       buffer: ${{ steps.program-buffer.outputs.buffer }}
       idl_buffer: ${{ steps.idl-buffer.outputs.buffer }}
+      is_anchor: ${{ steps.check-anchor.outputs.is_anchor }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check for Anchor.toml
+        id: check-anchor
+        run: |
+          if [ -f "Anchor.toml" ]; then
+            echo "is_anchor=true" >> $GITHUB_OUTPUT
+            echo "Anchor.toml found - this is an Anchor project"
+          else
+            echo "is_anchor=false" >> $GITHUB_OUTPUT
+            echo "No Anchor.toml found - this is not an Anchor project"
+          fi
 
       - name: Validate network
         if: inputs.network != 'devnet' && inputs.network != 'mainnet'
@@ -115,6 +127,7 @@ jobs:
 
       - name: Install Anchor
         uses: Woody4618/github-action/.github/actions/setup-anchor@main
+        if: steps.check-anchor.outputs.is_anchor == 'true'
 
       - name: Set Program Variables
         run: |
@@ -161,6 +174,7 @@ jobs:
 
       - name: Build Anchor
         uses: Woody4618/github-action/.github/actions/build-anchor@main
+        if: steps.check-anchor.outputs.is_anchor == 'true'
         with:
           testing: false
           devnet: ${{ inputs.network == 'devnet' }}
