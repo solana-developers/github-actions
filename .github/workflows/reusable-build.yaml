@@ -267,14 +267,18 @@ jobs:
           # Check copied files
           echo "Checking copied files:"
           ls -la build-artifacts/so/
-          [ -f "build-artifacts/idl/${{ env.PROGRAM_NAME }}.json" ] && ls -la build-artifacts/idl/
+          if [ -f 'build-artifacts/idl/${{ env.PROGRAM_NAME }}.json' ]; then   
+              ls -la build-artifacts/idl/
+          fi
 
           # Set permissions
           chmod -R 777 build-artifacts/
 
           echo "Artifacts copied to project directory at:"
           echo "SO file: ./build-artifacts/so/${{ env.PROGRAM_NAME }}.so"
-          [ -f "build-artifacts/idl/${{ env.PROGRAM_NAME }}.json" ] && echo "IDL file: ./build-artifacts/idl/${{ env.PROGRAM_NAME }}.json"
+          if [ -f "build-artifacts/idl/${{ env.PROGRAM_NAME }}.json" ]; then
+            echo "IDL file: ./build-artifacts/idl/${{ env.PROGRAM_NAME }}.json"
+          fi
 
       - name: Store so files
         if: ${{ !env.ACT }} # Only run on GitHub Actions, skip for local act runs
@@ -296,7 +300,9 @@ jobs:
         run: |
           echo "Artifacts stored locally at:"
           echo "SO file: ./artifacts/build/${{ env.PROGRAM_NAME }}-so/target/deploy/${{ env.PROGRAM_NAME }}.so"
-          [ -f "./target/idl/${{ env.PROGRAM_NAME }}.json" ] && echo "IDL file: ./artifacts/build/${{ env.PROGRAM_NAME }}-idl/target/idl/${{ env.PROGRAM_NAME }}.json"
+          if [ -f "./target/idl/${{ env.PROGRAM_NAME }}.json" ]; then
+            echo "IDL file: ./artifacts/build/${{ env.PROGRAM_NAME }}-idl/target/idl/${{ env.PROGRAM_NAME }}.json"
+          fi
 
       - name: Write Program Buffer
         uses: Woody4618/github-action/.github/actions/write-program-buffer@main
