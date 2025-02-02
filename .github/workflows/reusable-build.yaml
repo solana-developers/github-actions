@@ -182,8 +182,17 @@ jobs:
           echo "Current directory structure:"
           pwd
           ls -la
-          echo "Programs directory:"
-          ls -la programs/ || true
+
+          # Check for programs directory
+          if [ -d "programs" ]; then
+            echo "Programs directory:"
+            ls -la programs/
+          else
+            echo "No programs directory found (looking for program in src/)"
+            ls -la src/ || echo "No src directory found"
+          fi
+
+          # Check for Anchor.toml
           if [ -f "Anchor.toml" ]; then
             echo "Anchor.toml contents:"
             cat Anchor.toml
