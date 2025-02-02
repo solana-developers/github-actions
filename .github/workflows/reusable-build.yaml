@@ -146,23 +146,15 @@ jobs:
       - name: Set Program Variables from Cargo.toml
         if: steps.check-anchor.outputs.is_anchor == 'false'
         run: |
-          # Get program name from Cargo.toml
           PROGRAM="${{ inputs.program || 'transaction-example' }}"
 
-          # Try to get library name from Cargo.toml
           if [ -f "Cargo.toml" ]; then
             echo "Found Cargo.toml, contents:"
             cat Cargo.toml
             
-            # First try lib.name
-            LIB_NAME=$(toml get Cargo.toml lib.name | tr -d '"' || echo "")
-            echo "Extracted lib.name: ${LIB_NAME}"
-            
-            if [ -z "$LIB_NAME" ]; then
-              # If lib.name is not found, try package.name
-              LIB_NAME=$(toml get Cargo.toml package.name | tr -d '"' || echo "$PROGRAM")
-              echo "Extracted package.name: ${LIB_NAME}"
-            fi
+            # Get package name from cargo metadata
+            LIB_NAME=$(cargo metadata --format-version 1 | jq -r '.packages[0].name')
+            echo "Extracted name from cargo metadata: ${LIB_NAME}"
           else
             LIB_NAME="$PROGRAM"
             echo "No Cargo.toml found, using program name: ${LIB_NAME}"
