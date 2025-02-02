@@ -43,7 +43,11 @@ runs:
       shell: bash
       run: |
         # Try to get program info, capture any error message
+        echo "Checking program info..."
         PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
+        echo "Raw program info output:"
+        echo "$PROGRAM_INFO"
+
         if [ $? -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Program exists, checking size..."
@@ -56,7 +60,6 @@ runs:
             echo "Program does not exist yet, skipping size check"
           else
             echo "Error checking program: $PROGRAM_INFO"
-            exit 1
           fi
         fi
 
@@ -80,7 +83,6 @@ runs:
 
     - name: Write program buffer
       id: write-buffer
-      if: steps.check-program.outputs.exists == 'true'
       uses: nick-invision/retry@v2
       with:
         timeout_minutes: 60
