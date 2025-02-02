@@ -42,13 +42,16 @@ runs:
       id: check-program
       shell: bash
       run: |
+        set +e  # Don't exit on error
+        
         # Try to get program info, capture any error message
         echo "Checking program info..."
         PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
+        EXIT_CODE=$?
         echo "Raw program info output:"
         echo "$PROGRAM_INFO"
 
-        if [ $? -eq 0 ]; then
+        if [ $EXIT_CODE -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Program exists, checking size..."
           PROGRAM_DATA_LEN=$(echo "$PROGRAM_INFO" | grep "Program data len:" | cut -d ' ' -f4)
@@ -60,8 +63,11 @@ runs:
             echo "Program does not exist yet, skipping size check"
           else
             echo "Error checking program: $PROGRAM_INFO"
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
         fi
+        
+        set -e  # Restore error checking
 
     - name: Resize program if needed
       if: steps.check-program.outputs.exists == 'true'
