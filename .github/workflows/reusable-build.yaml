@@ -151,17 +151,25 @@ jobs:
 
           # Try to get library name from Cargo.toml
           if [ -f "Cargo.toml" ]; then
+            echo "Found Cargo.toml, contents:"
+            cat Cargo.toml
+            
+            # First try lib.name
             LIB_NAME=$(toml get Cargo.toml lib.name | tr -d '"' || echo "")
+            echo "Extracted lib.name: ${LIB_NAME}"
+            
             if [ -z "$LIB_NAME" ]; then
               # If lib.name is not found, try package.name
               LIB_NAME=$(toml get Cargo.toml package.name | tr -d '"' || echo "$PROGRAM")
+              echo "Extracted package.name: ${LIB_NAME}"
             fi
           else
             LIB_NAME="$PROGRAM"
+            echo "No Cargo.toml found, using program name: ${LIB_NAME}"
           fi
 
           PROGRAM_NAME="$LIB_NAME"
-          echo "Program name from Cargo.toml: $PROGRAM_NAME"
+          echo "Final program name: $PROGRAM_NAME"
           echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
 
           # Get program ID from keypair
