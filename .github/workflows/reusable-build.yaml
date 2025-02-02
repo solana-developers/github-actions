@@ -152,9 +152,15 @@ jobs:
             echo "Found Cargo.toml, contents:"
             cat Cargo.toml
             
-            # Get package name from cargo metadata
-            LIB_NAME=$(cargo metadata --format-version 1 | jq -r '.packages[0].name')
-            echo "Extracted name from cargo metadata: ${LIB_NAME}"
+            # Extract library name from [lib] section
+            LIB_NAME=$(grep -A1 '^\[lib\]' Cargo.toml | grep 'name' | sed 's/.*= *"\(.*\)".*/\1/')
+            echo "Extracted library name: ${LIB_NAME}"
+            
+            if [ -z "$LIB_NAME" ]; then
+              # Fallback to package name if no lib name found
+              LIB_NAME=$(grep -A1 '^\[package\]' Cargo.toml | grep 'name' | sed 's/.*= *"\(.*\)".*/\1/')
+              echo "No lib name found, using package name: ${LIB_NAME}"
+            fi
           else
             LIB_NAME="$PROGRAM"
             echo "No Cargo.toml found, using program name: ${LIB_NAME}"
