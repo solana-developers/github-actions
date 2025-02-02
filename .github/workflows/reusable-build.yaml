@@ -116,9 +116,9 @@ jobs:
       - name: Setup Environment
         uses: Woody4618/github-action/.github/actions/setup@main
 
-      - name: Debug Environment Before Anchor Setup
+      - name: Debug Environment Before Setup
         run: |
-          echo "=== Environment Variables Before Anchor Setup ==="
+          echo "=== Environment Variables Before Setup ==="
           env | grep -E "SOLANA|ANCHOR"
           echo "==========================="
 
@@ -148,7 +148,19 @@ jobs:
         run: |
           # Get program name from Cargo.toml
           PROGRAM="${{ inputs.program || 'transaction-example' }}"
-          PROGRAM_NAME=$(toml get ./programs/$PROGRAM/Cargo.toml package.name | tr -d '"' || echo $PROGRAM)
+
+          # Try to get library name from Cargo.toml
+          if [ -f "Cargo.toml" ]; then
+            LIB_NAME=$(toml get Cargo.toml lib.name | tr -d '"' || echo "")
+            if [ -z "$LIB_NAME" ]; then
+              # If lib.name is not found, try package.name
+              LIB_NAME=$(toml get Cargo.toml package.name | tr -d '"' || echo "$PROGRAM")
+            fi
+          else
+            LIB_NAME="$PROGRAM"
+          fi
+
+          PROGRAM_NAME="$LIB_NAME"
           echo "Program name from Cargo.toml: $PROGRAM_NAME"
           echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
 
