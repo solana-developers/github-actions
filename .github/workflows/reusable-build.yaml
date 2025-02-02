@@ -42,6 +42,11 @@ on:
         required: false
         type: string
         default: "0"
+      features:
+        description: "Cargo features to enable during build"
+        type: string
+        required: false
+        default: ""
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
       MAINNET_SOLANA_DEPLOY_URL:
@@ -234,6 +239,7 @@ jobs:
           devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
           program-id: ${{ env.PROGRAM_ID }}
+          features: ${{ inputs.features }}
 
       - name: Create local artifacts directory
         run: |

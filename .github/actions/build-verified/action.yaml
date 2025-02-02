@@ -18,6 +18,10 @@ inputs:
   verify-version:
     description: "Version of solana-verify to use"
     required: true
+  features:
+    description: "Features to enable during build"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -36,9 +40,9 @@ runs:
     - name: Build Verified
       shell: bash
       run: |
-        FEATURES=""
-        if [ "${{ inputs.devnet }}" = "true" ]; then
-          FEATURES="--features devnet"
+        FEATURES="${{ inputs.features }}"
+        if [ ! -z "$FEATURES" ]; then
+          FEATURES="--features $FEATURES"
         fi
         # Run solana-verify directly without Docker
         ~/.cargo/bin/solana-verify build --library-name ${{ inputs.program }} -- $FEATURES
