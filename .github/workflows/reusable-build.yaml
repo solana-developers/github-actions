@@ -129,7 +129,8 @@ jobs:
         uses: Woody4618/github-action/.github/actions/setup-anchor@main
         if: steps.check-anchor.outputs.is_anchor == 'true'
 
-      - name: Set Program Variables
+      - name: Set Program Variables from Anchor.toml
+        if: steps.check-anchor.outputs.is_anchor == 'true'
         run: |
           PROGRAM="${{ inputs.program || 'transaction-example' }}"
           PROGRAM_NAME=${PROGRAM//-/_}
@@ -142,6 +143,27 @@ jobs:
           echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
           echo "PROGRAM_ID=${PROGRAM_ID}" >> $GITHUB_ENV
 
+      - name: Set Program Variables from Cargo.toml
+        if: steps.check-anchor.outputs.is_anchor == 'false'
+        run: |
+          # Get program name from Cargo.toml
+          PROGRAM="${{ inputs.program || 'transaction-example' }}"
+          PROGRAM_NAME=$(toml get ./programs/$PROGRAM/Cargo.toml package.name | tr -d '"' || echo $PROGRAM)
+          echo "Program name from Cargo.toml: $PROGRAM_NAME"
+          echo "PROGRAM_NAME=${PROGRAM_NAME}" >> $GITHUB_ENV
+
+          # Get program ID from keypair
+          if [ ! -z "${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}" ]; then
+            echo "${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}" > program-keypair.json
+            PROGRAM_ID=$(solana-keygen pubkey program-keypair.json)
+            rm program-keypair.json
+            echo "Program ID from keypair: $PROGRAM_ID"
+            echo "PROGRAM_ID=${PROGRAM_ID}" >> $GITHUB_ENV
+          else
+            echo "Error: PROGRAM_ADDRESS_KEYPAIR is required for native programs"
+            exit 1
+          fi
+
       - name: Extract Addresses from Keypairs
         run: |
           # Extract deployer addresses
@@ -153,13 +175,6 @@ jobs:
             echo "${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}" > deployer-keypair.json
             echo "DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)" >> $GITHUB_ENV
             rm deployer-keypair.json
-          fi
-
-          # Extract program address if keypair exists
-          if [ ! -z "${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}" ]; then
-            echo "${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}" > program-keypair.json
-            echo "PROGRAM_ADDRESS=$(solana-keygen pubkey program-keypair.json)" >> $GITHUB_ENV
-            rm program-keypair.json
           fi
 
       - name: Debug Initial Structure
