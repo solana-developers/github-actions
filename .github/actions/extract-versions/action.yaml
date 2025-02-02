@@ -24,18 +24,22 @@ runs:
         fi
         echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
         echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
-        echo "SOLANA_CLI_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
 
         # Extract Anchor version from Cargo.lock or use override
         if [ -n "${{ github.event.inputs.anchor_version }}" ]; then
           ANCHOR_VERSION="${{ github.event.inputs.anchor_version }}"
           echo "Using override Anchor version: ${ANCHOR_VERSION}"
         else
-          ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-          echo "Detected Anchor version: ${ANCHOR_VERSION}"
+          # Check if anchor-lang exists in Cargo.lock
+          if grep -q 'name = "anchor-lang"' Cargo.lock; then
+            ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+            echo "Detected Anchor version: ${ANCHOR_VERSION}"
+            echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
+            echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
+          else
+            echo "No Anchor version found in Cargo.lock"
+          fi
         fi
-        echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
-        echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
 
         # Debug environment variables
         echo "=== Environment Variables Debug ==="
@@ -43,5 +47,5 @@ runs:
         cat $GITHUB_ENV
         echo "=== Direct Environment Variables ==="
         echo "SOLANA_VERSION: $SOLANA_VERSION"
-        echo "ANCHOR_VERSION: $ANCHOR_VERSION"
+        echo "ANCHOR_VERSION: ${ANCHOR_VERSION:-not found}"
         echo "==========================="
