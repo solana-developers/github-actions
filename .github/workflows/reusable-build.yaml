@@ -184,8 +184,12 @@ jobs:
           ls -la
           echo "Programs directory:"
           ls -la programs/ || true
-          echo "Anchor.toml contents:"
-          cat Anchor.toml
+          if [ -f "Anchor.toml" ]; then
+            echo "Anchor.toml contents:"
+            cat Anchor.toml
+          else
+            echo "No Anchor.toml found (this is expected for native programs)"
+          fi
 
       - name: Build Anchor
         uses: Woody4618/github-action/.github/actions/build-anchor@main
