@@ -250,23 +250,31 @@ jobs:
           # Check if source files exist
           echo "Checking source files:"
           ls -la ./target/deploy/
-          ls -la ./target/idl/
 
-          # Copy with verbose flag
+          # Copy SO file
           cp -v ./target/deploy/${{ env.PROGRAM_NAME }}.so build-artifacts/so/
-          cp -v ./target/idl/${{ env.PROGRAM_NAME }}.json build-artifacts/idl/
+
+          # Check and copy IDL if it exists
+          if [ -f "./target/idl/${{ env.PROGRAM_NAME }}.json" ]; then
+            echo "Found IDL file:"
+            ls -la ./target/idl/
+            cp -v ./target/idl/${{ env.PROGRAM_NAME }}.json build-artifacts/idl/
+            echo "IDL file copied to: ./build-artifacts/idl/${{ env.PROGRAM_NAME }}.json"
+          else
+            echo "No IDL file found (this is expected for native programs)"
+          fi
 
           # Check copied files
           echo "Checking copied files:"
           ls -la build-artifacts/so/
-          ls -la build-artifacts/idl/
+          [ -f "build-artifacts/idl/${{ env.PROGRAM_NAME }}.json" ] && ls -la build-artifacts/idl/
 
           # Set permissions
           chmod -R 777 build-artifacts/
 
           echo "Artifacts copied to project directory at:"
           echo "SO file: ./build-artifacts/so/${{ env.PROGRAM_NAME }}.so"
-          echo "IDL file: ./build-artifacts/idl/${{ env.PROGRAM_NAME }}.json"
+          [ -f "build-artifacts/idl/${{ env.PROGRAM_NAME }}.json" ] && echo "IDL file: ./build-artifacts/idl/${{ env.PROGRAM_NAME }}.json"
 
       - name: Store so files
         if: ${{ !env.ACT }} # Only run on GitHub Actions, skip for local act runs
@@ -277,7 +285,7 @@ jobs:
             ./target/deploy/${{ env.PROGRAM_NAME }}.so
 
       - name: Store idl files
-        if: ${{ !env.ACT }} # Only run on GitHub Actions, skip for local act runs
+        if: ${{ !env.ACT && hashFiles(format('./target/idl/{0}.json', env.PROGRAM_NAME)) != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PROGRAM_NAME }}-idl
@@ -288,7 +296,7 @@ jobs:
         run: |
           echo "Artifacts stored locally at:"
           echo "SO file: ./artifacts/build/${{ env.PROGRAM_NAME }}-so/target/deploy/${{ env.PROGRAM_NAME }}.so"
-          echo "IDL file: ./artifacts/build/${{ env.PROGRAM_NAME }}-idl/target/idl/${{ env.PROGRAM_NAME }}.json"
+          [ -f "./target/idl/${{ env.PROGRAM_NAME }}.json" ] && echo "IDL file: ./artifacts/build/${{ env.PROGRAM_NAME }}-idl/target/idl/${{ env.PROGRAM_NAME }}.json"
 
       - name: Write Program Buffer
         uses: Woody4618/github-action/.github/actions/write-program-buffer@main
