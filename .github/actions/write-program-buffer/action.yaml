@@ -38,55 +38,45 @@ runs:
       env:
         DEPLOY_KEYPAIR: ${{ inputs.keypair }}
 
-    - name: Check if program exists
+    - name: Get current program size if it exists
       id: check-program
       shell: bash
       run: |
-        if solana program show ${{ inputs.program-id }} --url ${{ inputs.rpc-url }} 2>&1 | grep -q "Data Length:"; then
+        # Try to get program info, capture any error message
+        PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
+        if [ $? -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
-          echo "Program exists, will create buffer"
+          echo "Program exists, checking size..."
+          PROGRAM_DATA_LEN=$(echo "$PROGRAM_INFO" | grep "Program data len:" | cut -d ' ' -f4)
+          echo "Current program data length: $PROGRAM_DATA_LEN"
+          echo "data_len=$PROGRAM_DATA_LEN" >> $GITHUB_OUTPUT
         else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "Program does not exist, skipping buffer creation"
-        fi
-
-    - name: Check program size
-      id: check-size
-      shell: bash
-      run: |
-        # Get current program size if it exists
-        PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }})
-        if echo "$PROGRAM_INFO" | grep -q "Data Length:"; then
-          # Extract size from format "Data Length: 212225 (0x33d01) bytes"
-          CURRENT_SIZE=$(echo "$PROGRAM_INFO" | grep "Data Length:" | sed -E 's/.*Data Length: ([0-9]+).*/\1/')
-          echo "Current program size: $CURRENT_SIZE bytes"
-          
-          NEW_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
-          echo "New program size: $NEW_SIZE bytes"
-          
-          if [ $NEW_SIZE -gt $CURRENT_SIZE ]; then
-            ADDITIONAL_BYTES=$((NEW_SIZE - CURRENT_SIZE))
-            echo "Program needs to be extended by $ADDITIONAL_BYTES bytes"
-            echo "needs_extend=true" >> $GITHUB_OUTPUT
-            echo "additional_bytes=$ADDITIONAL_BYTES" >> $GITHUB_OUTPUT
+          if echo "$PROGRAM_INFO" | grep -q "Unable to find the account"; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Program does not exist yet, skipping size check"
           else
-            echo "No extension needed"
-            echo "needs_extend=false" >> $GITHUB_OUTPUT
+            echo "Error checking program: $PROGRAM_INFO"
+            exit 1
           fi
-        else
-          echo "Program not found, no extension needed"
-          echo "needs_extend=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Extend program
-      if: steps.check-size.outputs.needs_extend == 'true'
+    - name: Resize program if needed
+      if: steps.check-program.outputs.exists == 'true'
       shell: bash
       run: |
-        echo "Extending program by ${{ steps.check-size.outputs.additional_bytes }} bytes"
-        solana program extend ${{ inputs.program-id }} \
-          ${{ steps.check-size.outputs.additional_bytes }} \
-          --keypair ./deploy-keypair.json \
-          -u ${{ inputs.rpc-url }}
+        REQUIRED_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
+        echo "Required size: $REQUIRED_SIZE"
+
+        if [ "$REQUIRED_SIZE" -gt "${{ steps.check-program.outputs.data_len }}" ]; then
+          echo "Program needs to be resized"
+          solana program extend ${{ inputs.program-id }} $REQUIRED_SIZE \
+            --keypair ./deploy-keypair.json \
+            --url ${{ inputs.rpc-url }} \
+            --commitment confirmed \
+            --with-compute-unit-price ${{ inputs.priority-fee }}
+        else
+          echo "Program size is sufficient"
+        fi
 
     - name: Write program buffer
       id: write-buffer
