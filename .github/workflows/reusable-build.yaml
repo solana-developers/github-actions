@@ -192,13 +192,20 @@ jobs:
           # Extract deployer addresses
           if [ "$IS_MAINNET" = "true" ]; then
             echo "${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}" > deployer-keypair.json
-            echo "DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)" >> $GITHUB_ENV
+            DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)
+            echo "Extracted mainnet deployer address: $DEPLOYER_ADDRESS"
+            echo "DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS" >> $GITHUB_ENV
             rm deployer-keypair.json
           else
             echo "${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}" > deployer-keypair.json
-            echo "DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)" >> $GITHUB_ENV
+            DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)
+            echo "Extracted devnet deployer address: $DEPLOYER_ADDRESS"
+            echo "DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS" >> $GITHUB_ENV
             rm deployer-keypair.json
           fi
+
+          # Verify environment variable was set
+          echo "Final DEPLOYER_ADDRESS from env: ${{ env.DEPLOYER_ADDRESS }}"
 
       - name: Debug Initial Structure
         run: |
