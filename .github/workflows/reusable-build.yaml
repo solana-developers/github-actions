@@ -313,7 +313,7 @@ jobs:
           program: ${{ env.PROGRAM_NAME }}
           rpc-url: ${{ env.DEPLOY_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          buffer-authority-address: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
+          buffer-authority-address: ${{ inputs.use-squads == true && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
           priority-fee: ${{ inputs.priority-fee }}
 
       - name: Write IDL Buffer
