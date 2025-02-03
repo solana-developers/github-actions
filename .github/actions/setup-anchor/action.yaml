@@ -20,7 +20,7 @@ runs:
         echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-$VERSION"
         echo "========================="
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Cache Anchor Cli
       id: cache-anchor-cli
       with:
@@ -40,7 +40,7 @@ runs:
         echo "=== Installation Complete ==="
         anchor --version
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Cache Toml Cli
       id: cache-toml-cli
       with:

@@ -17,7 +17,7 @@ runs:
         echo "Cache key being used: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}"
         echo "========================="
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Cache Solana Verify
       id: cache-solana-verify
       with:
@@ -32,4 +32,4 @@ runs:
 
     - name: Verify Installation
       shell: bash
-      run: solana-verify --version 
+      run: solana-verify --version
