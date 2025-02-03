@@ -100,10 +100,14 @@ jobs:
       - name: Set deployment variables
         run: |
           # Network specific variables
-          IS_MAINNET="${{ inputs.network == 'mainnet' }}"
+          if [ "${{ inputs.network }}" = "mainnet" ]; then
+            echo "IS_MAINNET=true" >> $GITHUB_ENV
+          else
+            echo "IS_MAINNET=false" >> $GITHUB_ENV
+          fi
 
           # Set URLs and Keys based on network
-          if [ "$IS_MAINNET" = "true" ]; then
+          if [ "${{ inputs.network }}" = "mainnet" ]; then
             echo "DEPLOY_URL=${{ secrets.MAINNET_SOLANA_DEPLOY_URL }}" >> $GITHUB_ENV
             echo "DEPLOYER_KEYPAIR=${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}" >> $GITHUB_ENV
             echo "MULTISIG=${{ secrets.MAINNET_MULTISIG }}" >> $GITHUB_ENV
@@ -189,14 +193,24 @@ jobs:
 
       - name: Extract Addresses from Keypairs
         run: |
+          echo "Using network: ${{ inputs.network }}"
+
           # Extract deployer addresses
-          if [ "$IS_MAINNET" = "true" ]; then
+          if [ "${{ inputs.network }}" = "mainnet" ]; then
+            if [ -z "${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}" ]; then
+              echo "Error: MAINNET_DEPLOYER_KEYPAIR is required"
+              exit 1
+            fi
             echo "${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}" > deployer-keypair.json
             DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)
             echo "Extracted mainnet deployer address: $DEPLOYER_ADDRESS"
             echo "DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS" >> $GITHUB_ENV
             rm deployer-keypair.json
           else
+            if [ -z "${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}" ]; then
+              echo "Error: DEVNET_DEPLOYER_KEYPAIR is required"
+              exit 1
+            fi
             echo "${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}" > deployer-keypair.json
             DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)
             echo "Extracted devnet deployer address: $DEPLOYER_ADDRESS"
@@ -205,7 +219,11 @@ jobs:
           fi
 
           # Verify environment variable was set
-          echo "Final DEPLOYER_ADDRESS from env: ${{ env.DEPLOYER_ADDRESS }}"
+          if [ -z "$DEPLOYER_ADDRESS" ]; then
+            echo "Error: Failed to extract deployer address"
+            exit 1
+          fi
+          echo "Final DEPLOYER_ADDRESS from env: $DEPLOYER_ADDRESS"
 
       - name: Debug Initial Structure
         run: |
