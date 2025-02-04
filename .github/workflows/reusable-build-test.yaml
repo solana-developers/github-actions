@@ -71,8 +71,6 @@ jobs:
     timeout-minutes: 60
     env:
       SOLANA_VERIFY_VERSION: "0.4.1"
-      ACTION_BASE: "Woody4618/solana-github-action-workflow/.github/actions"
-      ACTION_REF: "main"
     outputs:
       buffer: ${{ steps.program-buffer.outputs.buffer }}
       idl_buffer: ${{ steps.idl-buffer.outputs.buffer }}
@@ -121,7 +119,7 @@ jobs:
           fi
 
       - name: Extract Versions
-        uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
+        uses: ./.github/actions/extract-versions
 
       - name: Setup Environment
         uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
