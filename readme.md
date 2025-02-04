@@ -30,13 +30,13 @@ MAINNET_MULTISIG=          # Mainnet Squads multisig address
 MAINNET_MULTISIG_VAULT=    # Mainnet Squads vault address
 ```
 
-### Extends and automate 
+### Extends and automate
 
-You can easily extend or change your workflow. For example run the build workflow automatically on every push to a development branch. 
+You can easily extend or change your workflow. For example run the build workflow automatically on every push to a development branch.
 
 ```bash
   push:
-    branches: 
+    branches:
       - develop
       - dev
       - development
@@ -47,7 +47,7 @@ You can easily extend or change your workflow. For example run the build workflo
       - 'Cargo.lock'
 ```
 
-Or run a new release to mainnet on every tag push for example. 
+Or run a new release to mainnet on every tag push for example.
 
 ```bash
   push:
@@ -55,7 +55,7 @@ Or run a new release to mainnet on every tag push for example.
       - 'v*'
 ```
 
-Customize the workflow to your needs! 
+Customize the workflow to your needs!
 
 ### Running the actions locally
 
@@ -65,7 +65,7 @@ Follow the instructions [here](https://nektosact.com/installation/index.html) to
 
 1. Build
 
-Just pick the parameters you want. This is using act to run the workflow locally. Good for testing or if you dont want to install anything because this is running in docker and outputs the build artifacts as well. 
+Just pick the parameters you want. This is using act to run the workflow locally. Good for testing or if you dont want to install anything because this is running in docker and outputs the build artifacts as well.
 
 ```bash
 act -W .github/workflows/build.yaml \
@@ -83,7 +83,7 @@ act -W .github/workflows/build.yaml \
 2. Run anchor tests
 
 Note: The anchor tests use solana-test-validator which does not work in act docker container on mac because of AVX dependency. Wither run them in github, locally without docker or open PR to fix it. I couldnt find a nice way to fix it.
-You can adjust the workflow to run your specific tests as well. 
+You can adjust the workflow to run your specific tests as well.
 
 ```bash
 act -W .github/workflows/test.yaml \
@@ -168,10 +168,10 @@ act -W .github/workflows/build.yaml \
 - [x] Trigger release build on tag push
 - [x] Trigger devnet releases on develop branch?
 - [x] Make solana verify also work locally using cat
-- [x] Use keypairs to find deployer address to remove 2 secrets 
+- [x] Use keypairs to find deployer address to remove 2 secrets
 - [x] Add priority fees
-- [x] Add extend program if needed 
-- [ ] Bundle the needed TS scripts with the .github actions for easier copy paste  
+- [x] Add extend program if needed
+- [ ] Bundle the needed TS scripts with the .github actions for easier copy paste
 
 ### Testing & Integration
 
@@ -182,7 +182,7 @@ act -W .github/workflows/build.yaml \
 
 Close Buffer:
 
-You may need this in case your deploy failed and you want to close a buffer that was already transfered to your multisig. 
+You may need this in case your deploy failed and you want to close a buffer that was already transfered to your multisig.
 
 ```bash
 solana program show --buffers --buffer-authority <You multisig vault address>
@@ -199,9 +199,9 @@ npx ts-node scripts/squad-closebuffer.ts \
 
 - When using Squads, the workflow will create a proposal that needs to be approved in the Squads UI
 - For first deployments, program IDL authority errors can be ignored
-- If you run into any problems please open an issue and/or help fix it please :) 
-
+- If you run into any problems please open an issue and/or help fix it please :)
 
 #### additional notes
-- IDL must be upgraded before program upgrade instruction other wise it will fail 
+
+- IDL must be upgraded before program upgrade instruction other wise it will fail
 - Buffer authority and program upgrade cannot be in the same transaction for some reason (at least using squads) thats why its set during the workflow and not in the squads scripts

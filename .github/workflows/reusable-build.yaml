@@ -1,4 +1,5 @@
 name: Reusable Build Program
+description: A reusable workflow for building and deploying Solana programs
 
 on:
   workflow_call:
@@ -8,32 +9,32 @@ on:
         required: true
         type: string
       network:
-        description: "Target network for deployment"
+        description: "Target network for deployment (devnet/mainnet)"
         required: false
         default: "devnet"
         type: string
       deploy:
-        description: "Deploy program"
+        description: "Deploy program after build"
         required: false
         type: boolean
         default: false
       upload_idl:
-        description: "Upload IDL"
+        description: "Upload IDL after build"
         required: false
         type: boolean
         default: true
       verify:
-        description: "Verify build"
+        description: "Verify build on-chain using solana-verify"
         required: false
         type: boolean
         default: true
       use-squads:
-        description: "Use Squads for deployment"
+        description: "Use Squads multisig for deployment"
         required: false
         type: boolean
         default: false
       priority-fee:
-        description: "Priority fee in microlamports"
+        description: "Priority fee in microlamports for transactions"
         required: false
         type: string
         default: "100000"
@@ -65,13 +66,14 @@ on:
         description: "IDL buffer address"
         value: ${{ jobs.build.outputs.idl_buffer }}
 
-env:
-  SOLANA_VERIFY_VERSION: "0.4.1"
-
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      SOLANA_VERIFY_VERSION: "0.4.1"
+      ACTION_BASE: "Woody4618/solana-github-action-workflow/.github/actions"
+      ACTION_REF: "main"
     outputs:
       buffer: ${{ steps.program-buffer.outputs.buffer }}
       idl_buffer: ${{ steps.idl-buffer.outputs.buffer }}
@@ -120,10 +122,10 @@ jobs:
           fi
 
       - name: Extract Versions
-        uses: Woody4618/github-action/.github/actions/extract-versions@main
+        uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
 
       - name: Setup Environment
-        uses: Woody4618/github-action/.github/actions/setup@main
+        uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
 
       - name: Debug Environment Before Setup
         run: |
@@ -132,10 +134,10 @@ jobs:
           echo "==========================="
 
       - name: Install Solana
-        uses: Woody4618/github-action/.github/actions/setup-solana@main
+        uses: ${{ env.ACTION_BASE }}/setup-solana@${{ env.ACTION_REF }}
 
       - name: Install Anchor
-        uses: Woody4618/github-action/.github/actions/setup-anchor@main
+        uses: ${{ env.ACTION_BASE }}/setup-anchor@${{ env.ACTION_REF }}
         if: steps.check-anchor.outputs.is_anchor == 'true'
 
       - name: Set Program Variables from Anchor.toml
@@ -249,7 +251,7 @@ jobs:
           fi
 
       - name: Build Anchor
-        uses: Woody4618/github-action/.github/actions/build-anchor@main
+        uses: ${{ env.ACTION_BASE }}/build-anchor@${{ env.ACTION_REF }}
         if: steps.check-anchor.outputs.is_anchor == 'true'
         with:
           testing: false
@@ -257,7 +259,7 @@ jobs:
           program: ${{ env.PROGRAM_NAME }}
 
       - name: Build Verified
-        uses: Woody4618/github-action/.github/actions/build-verified@main
+        uses: ${{ env.ACTION_BASE }}/build-verified@${{ env.ACTION_REF }}
         id: build-verified
         with:
           verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
@@ -330,7 +332,7 @@ jobs:
           fi
 
       - name: Write Program Buffer
-        uses: Woody4618/github-action/.github/actions/write-program-buffer@main
+        uses: ${{ env.ACTION_BASE }}/write-program-buffer@${{ env.ACTION_REF }}
         id: program-buffer
         if: inputs.deploy
         with:
@@ -342,7 +344,7 @@ jobs:
           priority-fee: ${{ inputs.priority-fee }}
 
       - name: Write IDL Buffer
-        uses: Woody4618/github-action/.github/actions/write-idl-buffer@main
+        uses: ${{ env.ACTION_BASE }}/write-idl-buffer@${{ env.ACTION_REF }}
         id: idl-buffer
         if: inputs.upload_idl
         with:
@@ -353,7 +355,7 @@ jobs:
           idl-authority: ${{ inputs.use-squads && env.MULTISIG_VAULT || env.DEPLOYER_ADDRESS }}
 
       - name: Program Upgrade
-        uses: Woody4618/github-action/.github/actions/program-upgrade@main
+        uses: ${{ env.ACTION_BASE }}/program-upgrade@${{ env.ACTION_REF }}
         if: inputs.deploy && inputs.use-squads == false
         with:
           program-id: ${{ env.PROGRAM_ID }}
@@ -364,7 +366,7 @@ jobs:
           program-keypair: ${{ secrets.PROGRAM_ADDRESS_KEYPAIR }}
 
       - name: IDL Upload
-        uses: Woody4618/github-action/.github/actions/idl-upload@main
+        uses: ${{ env.ACTION_BASE }}/idl-upload@${{ env.ACTION_REF }}
         if: inputs.upload_idl && inputs.use-squads == false
         with:
           program-id: ${{ env.PROGRAM_ID }}
@@ -373,7 +375,7 @@ jobs:
           idl-buffer: ${{ steps.idl-buffer.outputs.buffer }}
 
       - name: Verify Build
-        uses: Woody4618/github-action/.github/actions/verify-build@main
+        uses: ${{ env.ACTION_BASE }}/verify-build@${{ env.ACTION_REF }}
         id: verify-build
         if: inputs.verify
         with:

@@ -29,8 +29,8 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/github-action/.github/actions/setup@main
-    - uses: Woody4618/github-action/.github/actions/setup-solana@main
+    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
+    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-solana@main
 
     - name: Write keypair
       shell: bash
