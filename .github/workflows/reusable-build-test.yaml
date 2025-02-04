@@ -1,4 +1,4 @@
-name: Reusable Build Solana Program
+name: Test reusuable build
 
 on:
   workflow_call:
