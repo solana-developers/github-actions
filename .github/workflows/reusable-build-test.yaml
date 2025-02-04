@@ -118,8 +118,14 @@ jobs:
             echo "MULTISIG_VAULT=${{ secrets.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
           fi
 
+      - name: Checkout Actions
+        uses: actions/checkout@v4
+        with:
+          repository: Woody4618/solana-github-action-workflow
+          path: .github/actions-external
+
       - name: Extract Versions
-        uses: ./.github/actions/extract-versions
+        uses: ./.github/actions-external/extract-versions
 
       - name: Setup Environment
         uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
