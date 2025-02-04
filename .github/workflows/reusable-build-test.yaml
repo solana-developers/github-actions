@@ -79,6 +79,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v4
+        with:
+          repository: Woody4618/solana-github-action-workflow
+          path: ./.github/actions-repo # Check out to a specific directory
+
       - name: Check for Anchor.toml
         id: check-anchor
         run: |
@@ -118,17 +124,11 @@ jobs:
             echo "MULTISIG_VAULT=${{ secrets.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
           fi
 
-      - name: Checkout Actions
-        uses: actions/checkout@v4
-        with:
-          repository: Woody4618/solana-github-action-workflow
-          path: .github/actions-external
-
       - name: Extract Versions
-        uses: ./.github/actions-external/extract-versions
+        uses: ./.github/actions-repo/.github/actions/extract-versions
 
       - name: Setup Environment
-        uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
+        uses: ./.github/actions-repo/.github/actions/setup
 
       - name: Debug Environment Before Setup
         run: |
