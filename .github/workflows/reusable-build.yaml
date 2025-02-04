@@ -1,5 +1,4 @@
-name: Reusable Build Program
-description: A reusable workflow for building and deploying Solana programs
+name: Reusable Build Solana Program
 
 on:
   workflow_call:
