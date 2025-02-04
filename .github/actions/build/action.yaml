@@ -37,6 +37,30 @@ inputs:
     description: "Index of the vault to use for the multisig"
     required: false
     default: "0"
+  MAINNET_SOLANA_DEPLOY_URL:
+    description: "Mainnet RPC URL for deployment"
+    required: false
+  DEVNET_SOLANA_DEPLOY_URL:
+    description: "Devnet RPC URL for deployment"
+    required: false
+  MAINNET_DEPLOYER_KEYPAIR:
+    description: "Base58 encoded keypair for mainnet deployment"
+    required: false
+  DEVNET_DEPLOYER_KEYPAIR:
+    description: "Base58 encoded keypair for devnet deployment"
+    required: false
+  MAINNET_MULTISIG:
+    description: "Mainnet Squads multisig address"
+    required: false
+  MAINNET_MULTISIG_VAULT:
+    description: "Mainnet Squads multisig vault address"
+    required: false
+  DEVNET_MULTISIG:
+    description: "Devnet Squads multisig address"
+    required: false
+  DEVNET_MULTISIG_VAULT:
+    description: "Devnet Squads multisig vault address"
+    required: false
 
 outputs:
   buffer:
@@ -68,15 +92,23 @@ runs:
       run: |
         # Set URLs and Keys based on network
         if [ "${{ inputs.network }}" = "mainnet" ]; then
-          echo "DEPLOY_URL=${{ secrets.MAINNET_SOLANA_DEPLOY_URL }}" >> $GITHUB_ENV
-          echo "DEPLOYER_KEYPAIR=${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}" >> $GITHUB_ENV
-          echo "MULTISIG=${{ secrets.MAINNET_MULTISIG }}" >> $GITHUB_ENV
-          echo "MULTISIG_VAULT=${{ secrets.MAINNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
+          echo "DEPLOY_URL=${{ inputs.MAINNET_SOLANA_DEPLOY_URL }}" >> $GITHUB_ENV
+          echo "DEPLOYER_KEYPAIR=${{ inputs.MAINNET_DEPLOYER_KEYPAIR }}" >> $GITHUB_ENV
+          echo "MULTISIG=${{ inputs.MAINNET_MULTISIG }}" >> $GITHUB_ENV
+          echo "MULTISIG_VAULT=${{ inputs.MAINNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
         else
-          echo "DEPLOY_URL=${{ secrets.DEVNET_SOLANA_DEPLOY_URL }}" >> $GITHUB_ENV
-          echo "DEPLOYER_KEYPAIR=${{ secrets.DEVNET_DEPLOYER_KEYPAIR }}" >> $GITHUB_ENV
-          echo "MULTISIG=${{ secrets.DEVNET_MULTISIG }}" >> $GITHUB_ENV
-          echo "MULTISIG_VAULT=${{ secrets.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
+          echo "DEPLOY_URL=${{ inputs.DEVNET_SOLANA_DEPLOY_URL }}" >> $GITHUB_ENV
+          echo "DEPLOYER_KEYPAIR=${{ inputs.DEVNET_DEPLOYER_KEYPAIR }}" >> $GITHUB_ENV
+          echo "MULTISIG=${{ inputs.DEVNET_MULTISIG }}" >> $GITHUB_ENV
+          echo "MULTISIG_VAULT=${{ inputs.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
+        fi
+
+        # Extract deployer address from keypair
+        if [ -n "$DEPLOYER_KEYPAIR" ]; then
+          echo "$DEPLOYER_KEYPAIR" > deployer-keypair.json
+          DEPLOYER_ADDRESS=$(solana-keygen pubkey deployer-keypair.json)
+          echo "DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS" >> $GITHUB_ENV
+          rm deployer-keypair.json
         fi
 
     - name: Extract Versions
