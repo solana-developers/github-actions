@@ -1,0 +1,155 @@
+name: "Setup All Development Tools"
+description: "Sets up Solana, Anchor, and verification tools with optional installations"
+
+inputs:
+  solana_version:
+    description: "Solana version to install (leave empty to skip)"
+    required: false
+    default: ""
+  anchor_version:
+    description: "Anchor version to install (leave empty to skip)"
+    required: false
+    default: ""
+  verify_version:
+    description: "Solana verify version to install (leave empty to skip)"
+    required: false
+    default: ""
+  node_version:
+    description: "Node version to install (leave empty to skip)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - run: sudo apt-get update
+      shell: bash
+    - run: sudo apt-get install -y pkg-config build-essential libudev-dev
+      shell: bash
+    - run: git submodule update --init --recursive --depth 1
+      shell: bash
+
+    - uses: actions/cache@v4
+      if: inputs.solana_version != ''
+      name: Cache Solana Tool Suite
+      id: cache-solana
+      with:
+        path: |
+          ~/.cache/solana/
+          ~/.local/share/solana/
+        key: solana-${{ runner.os }}-v0001-${{ env.SOLANA_VERSION }}
+
+    - name: Debug Solana Version Values
+      if: inputs.solana_version != ''
+      shell: bash
+      run: |
+        echo "=== Debug Solana Version Information ==="
+        VERSION="${{ inputs.solana_version }}"
+        echo "Using Solana version: $VERSION"
+        echo "Cache key being used: solana-${{ runner.os }}-v0001-${{ env.SOLANA_VERSION }}"
+        echo "========================="
+
+    - name: Install Solana
+      shell: bash
+      if: steps.cache-solana.outputs.cache-hit != 'true' && inputs.solana_version != ''
+      run: |
+        # Parse version numbers
+        MAJOR=$(echo $SOLANA_VERSION | cut -d. -f1)
+        MINOR=$(echo $SOLANA_VERSION | cut -d. -f2)
+        PATCH=$(echo $SOLANA_VERSION | cut -d. -f3)
+
+        # Determine which URL to use based on version
+        if [ "$MAJOR" -eq 1 ] && [ "$MINOR" -eq 18 ] && [ "$PATCH" -le 23 ]; then
+          INSTALL_URL="https://release.solana.com/v${SOLANA_VERSION}/install"
+        else
+          INSTALL_URL="https://release.anza.xyz/v${SOLANA_VERSION}/install"
+        fi
+
+        echo "Installing Solana from: $INSTALL_URL"
+        sh -c "$(curl -sSfL $INSTALL_URL)"
+      env:
+        SOLANA_VERSION: ${{ env.SOLANA_VERSION }}
+
+    - name: Set Solana Path variables
+      if: inputs.solana_version != ''
+      run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Create default keypair
+      if: inputs.solana_version != ''
+      run: solana-keygen new -s --no-bip39-passphrase --force
+      shell: bash
+
+    - name: Set rpc connection to local host
+      if: inputs.solana_version != ''
+      run: solana config set --url localhost
+      shell: bash
+
+    - name: Debug Version Values
+      if: inputs.anchor_version != ''
+      shell: bash
+      run: |
+        echo "=== Debug Version Information ==="
+        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
+        echo "Using Anchor version: $VERSION"
+        echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-$VERSION"
+        echo "========================="
+
+    - uses: actions/cache@v4
+      if: inputs.anchor_version != ''
+      name: Cache Anchor Cli
+      id: cache-anchor-cli
+      with:
+        path: |
+          ~/.cargo/bin/anchor
+        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version || env.ANCHOR_VERSION }}
+
+    - name: Install Anchor CLI
+      shell: bash
+      if: steps.cache-anchor-cli.outputs.cache-hit != 'true' && inputs.anchor_version != ''
+      run: |
+        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
+        echo "=== Installation Debug Info ==="
+        echo "Installing Anchor version: $VERSION"
+        echo "=== Starting Installation ==="
+        cargo install --git https://github.com/coral-xyz/anchor --tag "v$VERSION" anchor-cli --force
+        echo "=== Installation Complete ==="
+        anchor --version
+
+    - name: Verify Anchor Installation
+      if: inputs.anchor_version != ''
+      shell: bash
+      run: anchor --version
+
+    - name: Debug Version Values
+      if: inputs.verify-version != ''
+      shell: bash
+      run: |
+        echo "=== Debug Version Information ==="
+        echo "Using solana-verify version: ${{ inputs.verify-version }}"
+        echo "Cache key being used: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}"
+        echo "========================="
+
+    - uses: actions/cache@v4
+      if: inputs.verify-version != ''
+      name: Cache Solana Verify
+      id: cache-solana-verify
+      with:
+        path: |
+          ~/.cargo/bin/solana-verify
+        key: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}
+
+    - name: Install Solana Verify
+      if: steps.cache-solana-verify.outputs.cache-hit != 'true' && inputs.verify-version != ''
+      shell: bash
+      run: cargo install solana-verify --version ${{ inputs.verify-version }}
+
+    - name: Verify Installation
+      if: inputs.verify-version != ''
+      shell: bash
+      run: solana-verify --version
+
+    - uses: actions/setup-node@v3
+      if: inputs.node_version != ''
+      with:
+        node-version: ${{ inputs.node_version }}

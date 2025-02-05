@@ -5,10 +5,6 @@ inputs:
     description: "Whether to run tests"
     required: false
     default: "true"
-  devnet:
-    description: "Whether to build for devnet"
-    required: false
-    default: "false"
   program:
     description: "Program to build"
     required: true

@@ -71,8 +71,6 @@ jobs:
     timeout-minutes: 60
     env:
       SOLANA_VERIFY_VERSION: "0.4.1"
-      ACTION_BASE: "Woody4618/solana-github-action-workflow/.github/actions"
-      ACTION_REF: "main"
     outputs:
       buffer: ${{ steps.program-buffer.outputs.buffer }}
       idl_buffer: ${{ steps.idl-buffer.outputs.buffer }}
@@ -254,7 +252,6 @@ jobs:
         if: steps.check-anchor.outputs.is_anchor == 'true'
         with:
           testing: false
-          devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
 
       - name: Build Verified

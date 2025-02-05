@@ -11,17 +11,12 @@ runs:
     - uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
       id: versions
 
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
-
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-solana@main
-
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-anchor@main
+    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
       with:
-        anchor-version: ${{ env.ANCHOR_VERSION }}
-
-    - uses: actions/setup-node@v3
-      with:
-        node-version: "18"
+        solana-version: ${{ steps.versions.outputs.solana_version }}
+        anchor-version: ${{ steps.versions.outputs.anchor_version }}
+        verify-version: ${{ env.VERIFY_VERSION }}
+        node-version: 18
 
     - name: Cache node_modules
       uses: actions/cache@v3
