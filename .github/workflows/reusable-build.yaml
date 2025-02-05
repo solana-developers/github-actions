@@ -129,7 +129,7 @@ jobs:
           fi
 
       - uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
-        if: inputs.override-solana-version != '' || inputs.override-anchor-version != ''
+        if: inputs.override-solana-version == '' || inputs.override-anchor-version == ''
         id: versions
 
       - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
