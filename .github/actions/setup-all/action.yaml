@@ -90,7 +90,7 @@ runs:
       shell: bash
       run: |
         echo "=== Debug Version Information ==="
-        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
+        VERSION="${{ inputs.anchor_version }}"
         echo "Using Anchor version: $VERSION"
         echo "Cache key being used: anchor-cli-${{ runner.os }}-v0003-$VERSION"
         echo "========================="
@@ -102,13 +102,13 @@ runs:
       with:
         path: |
           ~/.cargo/bin/anchor
-        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor-version || env.ANCHOR_VERSION }}
+        key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor_version }}
 
     - name: Install Anchor CLI
       shell: bash
       if: steps.cache-anchor-cli.outputs.cache-hit != 'true' && inputs.anchor_version != ''
       run: |
-        VERSION="${{ inputs.anchor-version || env.ANCHOR_VERSION }}"
+        VERSION="${{ inputs.anchor_version  }}"
         echo "=== Installation Debug Info ==="
         echo "Installing Anchor version: $VERSION"
         echo "=== Starting Installation ==="
@@ -122,30 +122,30 @@ runs:
       run: anchor --version
 
     - name: Debug Version Values
-      if: inputs.verify-version != ''
+      if: inputs.verify_version != ''
       shell: bash
       run: |
         echo "=== Debug Version Information ==="
-        echo "Using solana-verify version: ${{ inputs.verify-version }}"
-        echo "Cache key being used: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}"
+        echo "Using solana-verify version: ${{ inputs.verify_version }}"
+        echo "Cache key being used: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify_version }}"
         echo "========================="
 
     - uses: actions/cache@v4
-      if: inputs.verify-version != ''
+      if: inputs.verify_version != ''
       name: Cache Solana Verify
       id: cache-solana-verify
       with:
         path: |
           ~/.cargo/bin/solana-verify
-        key: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify-version }}
+        key: solana-verify-${{ runner.os }}-v0001-${{ inputs.verify_version }}
 
     - name: Install Solana Verify
-      if: steps.cache-solana-verify.outputs.cache-hit != 'true' && inputs.verify-version != ''
+      if: steps.cache-solana-verify.outputs.cache-hit != 'true' && inputs.verify_version != ''
       shell: bash
-      run: cargo install solana-verify --version ${{ inputs.verify-version }}
+      run: cargo install solana-verify --version ${{ inputs.verify_version }}
 
     - name: Verify Installation
-      if: inputs.verify-version != ''
+      if: inputs.verify_version != ''
       shell: bash
       run: solana-verify --version
 
