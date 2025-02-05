@@ -8,16 +8,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
-      id: versions
-
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
-      with:
-        solana_version: ${{ steps.versions.outputs.solana_version }}
-        anchor_version: ${{ steps.versions.outputs.anchor_version }}
-        verify_version: ${{ env.SOLANA_VERIFY_VERSION }}
-        node_version: 18
-
     - name: Cache node_modules
       uses: actions/cache@v3
       with:
@@ -37,7 +27,7 @@ runs:
           ~/.cargo/git/db/
           target/
           test-ledger/
-        shared-key: "anchor-test-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}"
+        shared-key: "anchor-test-${{ steps.versions.outputs.anchor_version }}-${{ steps.versions.outputs.solana_version }}"
 
     - name: Run Anchor Tests
       shell: bash
