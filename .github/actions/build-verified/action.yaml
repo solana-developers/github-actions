@@ -1,19 +1,8 @@
 name: "Build Verified"
 description: "Builds a Solana program using solana-verify"
 inputs:
-  devnet:
-    description: "Whether to use devnet feature"
-    required: false
-    default: "false"
-  testing:
-    description: "Whether to use devnet feature"
-    required: false
-    default: "false"
   program:
     description: "The program to build and upload"
-    required: true
-  program-id:
-    description: "The program id of the program we are uploading"
     required: true
   features:
     description: "Features to enable during build"
