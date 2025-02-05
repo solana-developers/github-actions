@@ -15,9 +15,6 @@ inputs:
   program-id:
     description: "The program id of the program we are uploading"
     required: true
-  verify-version:
-    description: "Version of solana-verify to use"
-    required: true
   features:
     description: "Features to enable during build"
     required: false
@@ -26,11 +23,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-solana-verify@main
-      with:
-        verify-version: ${{ inputs.verify-version }}
-
     # Add Docker socket mounting
     - name: Setup Docker
       shell: bash

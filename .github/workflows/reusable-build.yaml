@@ -118,24 +118,15 @@ jobs:
             echo "MULTISIG_VAULT=${{ secrets.DEVNET_MULTISIG_VAULT }}" >> $GITHUB_ENV
           fi
 
-      - name: Extract Versions
-        uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
+      - uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
+        id: versions
 
-      - name: Setup Environment
-        uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
-
-      - name: Debug Environment Before Setup
-        run: |
-          echo "=== Environment Variables Before Setup ==="
-          env | grep -E "SOLANA|ANCHOR"
-          echo "==========================="
-
-      - name: Install Solana
-        uses: Woody4618/solana-github-action-workflow/.github/actions/setup-solana@main
-
-      - name: Install Anchor
-        uses: Woody4618/solana-github-action-workflow/.github/actions/setup-anchor@main
-        if: steps.check-anchor.outputs.is_anchor == 'true'
+      - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
+        id: setup
+        with:
+          solana_version: ${{ steps.versions.outputs.solana_version }}
+          anchor_version: ${{ steps.versions.outputs.anchor_version }}
+          verify_version: ${{ env.VERIFY_VERSION }}
 
       - name: Set Program Variables from Anchor.toml
         if: steps.check-anchor.outputs.is_anchor == 'true'
@@ -258,7 +249,6 @@ jobs:
         uses: Woody4618/solana-github-action-workflow/.github/actions/build-verified@main
         id: build-verified
         with:
-          verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
           devnet: ${{ inputs.network == 'devnet' }}
           program: ${{ env.PROGRAM_NAME }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -375,7 +365,6 @@ jobs:
         id: verify-build
         if: inputs.verify
         with:
-          verify-version: ${{ env.SOLANA_VERIFY_VERSION }}
           program-id: ${{ env.PROGRAM_ID }}
           program: ${{ env.PROGRAM_NAME }}
           network: ${{ inputs.network }}

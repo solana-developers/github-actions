@@ -23,9 +23,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup@main
-    - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-solana@main
-
     - name: Write keypairs
       shell: bash
       run: |
