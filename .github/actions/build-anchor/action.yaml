@@ -1,13 +1,12 @@
 name: "Build Anchor"
 description: "Build Anchor"
 inputs:
-  testing:
-    description: "Whether to run tests"
-    required: false
-    default: "true"
   program:
     description: "Program to build"
     required: true
+  features:
+    description: "Features that will be passed into the build"
+    required: false
 runs:
   using: "composite"
   steps:
@@ -15,7 +14,12 @@ runs:
       shell: bash
       run: |
         echo "Building Anchor program: ${{ inputs.program }} to get IDL"
-        anchor build -p ${{ inputs.program }}
+        FEATURES="${{ inputs.features }}"
+        if [ ! -z "$FEATURES" ]; then
+          FEATURES="--features $FEATURES"
+        fi
+
+        anchor build -p ${{ inputs.program }} -- $FEATURES
     - name: Copy artifacts from container
       shell: bash
       run: |

@@ -4,6 +4,9 @@ inputs:
   program:
     description: "Program to test"
     required: true
+  features:
+    description: "Features that will be passed into the test"
+    required: false
 
 runs:
   using: "composite"
@@ -37,7 +40,12 @@ runs:
         RUST_BACKTRACE: 1
       run: |
         echo "Running tests for program: ${{ inputs.program }}"
-        anchor test
+                FEATURES="${{ inputs.features }}"
+        if [ ! -z "$FEATURES" ]; then
+          FEATURES="--features $FEATURES"
+        fi
+
+        anchor test -- $FEATURES
 
     - name: Check Test Results
       if: ${{ failure() }}
