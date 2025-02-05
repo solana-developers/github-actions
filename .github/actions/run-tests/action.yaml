@@ -13,10 +13,10 @@ runs:
 
     - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
       with:
-        solana-version: ${{ steps.versions.outputs.solana_version }}
-        anchor-version: ${{ steps.versions.outputs.anchor_version }}
-        verify-version: ${{ env.VERIFY_VERSION }}
-        node-version: 18
+        solana_version: ${{ steps.versions.outputs.solana_version }}
+        anchor_version: ${{ steps.versions.outputs.anchor_version }}
+        verify_version: ${{ env.VERIFY_VERSION }}
+        node_version: 18
 
     - name: Cache node_modules
       uses: actions/cache@v3
