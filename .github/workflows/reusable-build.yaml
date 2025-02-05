@@ -47,6 +47,16 @@ on:
         type: string
         required: false
         default: ""
+      override-solana-version:
+        description: "The version is taken from the cargo.lock but you can also override it here"
+        type: string
+        required: false
+        default: ""
+      override-anchor-version:
+        description: "The version is taken from the cargo.lock but you can also override it here"
+        type: string
+        required: false
+        default: ""
     secrets:
       DEVNET_SOLANA_DEPLOY_URL:
       MAINNET_SOLANA_DEPLOY_URL:
@@ -119,14 +129,15 @@ jobs:
           fi
 
       - uses: Woody4618/solana-github-action-workflow/.github/actions/extract-versions@main
+        if: inputs.override-solana-version != '' || inputs.override-anchor-version != ''
         id: versions
 
       - uses: Woody4618/solana-github-action-workflow/.github/actions/setup-all@main
         id: setup
         with:
-          solana_version: ${{ steps.versions.outputs.solana_version }}
-          anchor_version: ${{ steps.versions.outputs.anchor_version }}
-          verify_version: ${{ env.VERIFY_VERSION }}
+          solana_version: ${{ inputs.override-solana-version != '' && inputs.override-solana-version || steps.versions.outputs.solana_version }}
+          anchor_version: ${{ inputs.override-anchor-version != '' && inputs.override-anchor-version || steps.versions.outputs.anchor_version }}
+          verify_version: ${{ env.SOLANA_VERIFY_VERSION }}
 
       - name: Set Program Variables from Anchor.toml
         if: steps.check-anchor.outputs.is_anchor == 'true'

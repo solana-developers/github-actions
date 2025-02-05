@@ -15,7 +15,7 @@ runs:
       with:
         solana_version: ${{ steps.versions.outputs.solana_version }}
         anchor_version: ${{ steps.versions.outputs.anchor_version }}
-        verify_version: ${{ env.VERIFY_VERSION }}
+        verify_version: ${{ env.SOLANA_VERIFY_VERSION }}
         node_version: 18
 
     - name: Cache node_modules
