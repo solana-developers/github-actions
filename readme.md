@@ -161,3 +161,45 @@ npx ts-node scripts/squad-closebuffer.ts \
  --keypair ~/.config/solana/id.json \
  --program "BhV84MZrRnEvtWLdWMRJGJr1GbusxfVMHAwc3pq92g4z"
 ```
+
+# Release v0.2.1
+
+## Bug Fixes
+
+- Fixed program size extraction in buffer write action
+
+# Release v0.2.0
+
+## Major Changes
+
+- Combined setup actions into a single `setup-all` action
+- Improved version management with override capabilities
+- Added support for feature flags in builds and tests
+- Enhanced caching strategy for faster builds
+
+## New Features
+
+- Added version override inputs:
+  - `override-solana-version`
+  - `override-anchor-version`
+- Added feature flags support for tests
+- Added toml-cli caching
+- Improved error handling in buffer management
+
+## Breaking Changes
+
+- Removed individual setup actions in favor of `setup-all`
+- Changed input parameter naming convention (using underscores instead of hyphens)
+- Simplified build-verified action inputs
+
+## Bug Fixes
+
+- Fixed version extraction logic
+- Fixed cache key generation
+- Fixed buffer authority handling
+
+## Documentation
+
+- Updated README with detailed action descriptions
+- Added comprehensive input/output documentation
+- Added buffer cleanup instructions

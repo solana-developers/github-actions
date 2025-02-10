@@ -51,9 +51,9 @@ runs:
         if [ $EXIT_CODE -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Program exists, checking size..."
-          PROGRAM_DATA_LEN=$(echo "$PROGRAM_INFO" | grep "Program data len:" | cut -d ' ' -f4)
-          echo "Current program data length: $PROGRAM_DATA_LEN"
-          echo "data_len=$PROGRAM_DATA_LEN" >> $GITHUB_OUTPUT
+          CURRENT_SIZE=$(echo "$PROGRAM_INFO" | grep "Data Length:" | sed -E 's/.*Data Length: ([0-9]+).*/\1/' | cut -d ' ' -f1)
+          echo "Current program data length: $CURRENT_SIZE"
+          echo "data_len=$CURRENT_SIZE" >> $GITHUB_OUTPUT
         else
           if echo "$PROGRAM_INFO" | grep -q "Unable to find the account"; then
             echo "exists=false" >> $GITHUB_OUTPUT
