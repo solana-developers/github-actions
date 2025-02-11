@@ -16,11 +16,13 @@ It is highly recommended to use the squads integration for program deployments.
 ### How to use
 
 The easiest way to use the github actions is using one of the [reusable workflows](https://github.com/solana-developers/github-workflows).
+You can also follow this [Video Walkthrough](https://youtu.be/h-ngRgWW_IM)
 
-There are two examples:
+There are three examples:
 
 - [Anchor Program](https://github.com/Woody4618/anchor-github-action-example)
 - [Native Program](https://github.com/Woody4618/native-solana-github-action-example)
+- [Anchor Program using Squads](https://github.com/Woody4618/workflow-tutorial) 
 
 ### Required Secrets for specific actions
 
