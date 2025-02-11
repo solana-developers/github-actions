@@ -78,8 +78,7 @@ runs:
           solana program extend ${{ inputs.program-id }} $REQUIRED_SIZE \
             --keypair ./deploy-keypair.json \
             --url ${{ inputs.rpc-url }} \
-            --commitment confirmed \
-            --with-compute-unit-price ${{ inputs.priority-fee }}
+            --commitment confirmed
         else
           echo "Program size is sufficient"
         fi

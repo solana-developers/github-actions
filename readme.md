@@ -162,6 +162,12 @@ npx ts-node scripts/squad-closebuffer.ts \
  --program "BhV84MZrRnEvtWLdWMRJGJr1GbusxfVMHAwc3pq92g4z"
 ```
 
+# Release v0.2.2
+
+## Bug Fixes
+
+- Remove compute unit price from program extend
+
 # Release v0.2.1
 
 ## Bug Fixes
