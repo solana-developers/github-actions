@@ -71,11 +71,14 @@ runs:
       shell: bash
       run: |
         REQUIRED_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
+        CURRENT_SIZE="${{ steps.check-program.outputs.data_len }}"
         echo "Required size: $REQUIRED_SIZE"
+        echo "Current size: $CURRENT_SIZE"
 
-        if [ "$REQUIRED_SIZE" -gt "${{ steps.check-program.outputs.data_len }}" ]; then
-          echo "Program needs to be resized"
-          solana program extend ${{ inputs.program-id }} $REQUIRED_SIZE \
+        if [ "$REQUIRED_SIZE" -gt "$CURRENT_SIZE" ]; then
+          EXTEND_SIZE=$((REQUIRED_SIZE - CURRENT_SIZE))
+          echo "Program needs to be extended by $EXTEND_SIZE bytes"
+          solana program extend ${{ inputs.program-id }} $EXTEND_SIZE \
             --keypair ./deploy-keypair.json \
             --url ${{ inputs.rpc-url }} \
             --commitment confirmed
