@@ -44,7 +44,7 @@ runs:
 
     - name: Deploy new program
       if: steps.check-program.outputs.exists == 'false'
-      uses: nick-invision/retry@v2
+      uses: nick-fields/retry@v2
       with:
         timeout_minutes: 10
         max_attempts: 3
@@ -60,7 +60,7 @@ runs:
 
     - name: Upgrade existing program
       if: steps.check-program.outputs.exists == 'true'
-      uses: nick-invision/retry@v2
+      uses: nick-fields/retry@v2
       with:
         timeout_minutes: 10
         max_attempts: 3

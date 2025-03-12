@@ -23,7 +23,7 @@ runs:
         DEPLOY_KEYPAIR: ${{ inputs.keypair }}
 
     - name: Upload IDL
-      uses: nick-invision/retry@v2
+      uses: nick-fields/retry@v2
       with:
         timeout_minutes: 10
         max_attempts: 50
