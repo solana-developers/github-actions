@@ -30,7 +30,7 @@ runs:
           ~/.cargo/git/db/
           target/
           test-ledger/
-        shared-key: "anchor-test-${{ steps.versions.outputs.anchor_version }}-${{ steps.versions.outputs.solana_version }}"
+        shared-key: "anchor-test-${{ steps.extract.outputs.anchor_version }}-${{ steps.extract.outputs.solana_version }}"
 
     - name: Run Anchor Tests
       shell: bash
