@@ -1,5 +1,5 @@
 name: "Extract Versions"
-description: "Extracts Solana and Anchor versions from Cargo.lock"
+description: "Extracts Solana and Anchor versions from anchor.toml or Cargo.lock"
 outputs:
   solana_version:
     description: "Detected Solana version"
@@ -14,31 +14,55 @@ runs:
     - id: extract
       shell: bash
       run: |
-        # Extract Solana version from Cargo.lock or use override
+        # Function to extract version from anchor.toml
+        extract_from_anchor_toml() {
+          local key=$1
+          if [ -f "anchor.toml" ]; then
+            grep "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2
+          fi
+        }
+
+        # Extract Solana version
         if [ -n "${{ github.event.inputs.solana_version }}" ]; then
           SOLANA_VERSION="${{ github.event.inputs.solana_version }}"
           echo "Using override Solana version: ${SOLANA_VERSION}"
         else
-          SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-          echo "Detected Solana version: ${SOLANA_VERSION}"
+          # First try anchor.toml
+          SOLANA_VERSION=$(extract_from_anchor_toml "solana")
+          if [ -n "${SOLANA_VERSION}" ]; then
+            echo "Detected Solana version from anchor.toml: ${SOLANA_VERSION}"
+          else
+            # Fallback to Cargo.lock
+            SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+            echo "Detected Solana version from Cargo.lock: ${SOLANA_VERSION}"
+          fi
         fi
         echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
         echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
 
-        # Extract Anchor version from Cargo.lock or use override
+        # Extract Anchor version
         if [ -n "${{ github.event.inputs.anchor_version }}" ]; then
           ANCHOR_VERSION="${{ github.event.inputs.anchor_version }}"
           echo "Using override Anchor version: ${ANCHOR_VERSION}"
         else
-          # Check if anchor-lang exists in Cargo.lock
-          if grep -q 'name = "anchor-lang"' Cargo.lock; then
-            ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-            echo "Detected Anchor version: ${ANCHOR_VERSION}"
-            echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
-            echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
+          # First try anchor.toml
+          ANCHOR_VERSION=$(extract_from_anchor_toml "anchor")
+          if [ -n "${ANCHOR_VERSION}" ]; then
+            echo "Detected Anchor version from anchor.toml: ${ANCHOR_VERSION}"
           else
-            echo "No Anchor version found in Cargo.lock"
+            # Fallback to Cargo.lock
+            if grep -q 'name = "anchor-lang"' Cargo.lock; then
+              ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+              echo "Detected Anchor version from Cargo.lock: ${ANCHOR_VERSION}"
+            else
+              echo "No Anchor version found in anchor.toml or Cargo.lock"
+            fi
           fi
+        fi
+
+        if [ -n "${ANCHOR_VERSION}" ]; then
+          echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
+          echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
         fi
 
         # Debug environment variables
