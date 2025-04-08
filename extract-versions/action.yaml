@@ -1,5 +1,5 @@
 name: "Extract Versions"
-description: "Extracts Solana and Anchor versions from Cargo.lock"
+description: "Extracts Solana and Anchor versions from anchor.toml or Cargo.lock"
 outputs:
   solana_version:
     description: "Detected Solana version"
@@ -14,30 +14,106 @@ runs:
     - id: extract
       shell: bash
       run: |
-        # Extract Solana version from Cargo.lock or use override
+        set +e  # Don't exit on error
+
+        # Debug information
+        echo "=== Debug Information ==="
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Looking for Anchor.toml/anchor.toml..."
+        find . -iname "anchor.toml" || echo "No anchor.toml found in directory tree"
+        echo "=======================" 
+
+        # Function to extract version from anchor.toml
+        extract_from_anchor_toml() {
+          local key=$1
+          local version=""
+          # Try both uppercase and lowercase variants
+          if [ -f "Anchor.toml" ]; then
+            echo "Found Anchor.toml in current directory" >&2
+            version=$(grep -i "^${key}_version *= *\".*\"" Anchor.toml | cut -d'"' -f2 || true)
+          elif [ -f "anchor.toml" ]; then
+            echo "Found anchor.toml in current directory" >&2
+            version=$(grep -i "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2 || true)
+          # Then try to find it in subdirectories
+          else
+            anchor_toml=$(find . -iname "anchor.toml" -type f | head -n 1)
+            if [ -n "$anchor_toml" ]; then
+              echo "Found anchor.toml at: $anchor_toml" >&2
+              version=$(grep -i "^${key}_version *= *\".*\"" "$anchor_toml" | cut -d'"' -f2 || true)
+            fi
+          fi
+          echo "$version"
+        }
+
+        # Extract Solana version
         if [ -n "${{ github.event.inputs.solana_version }}" ]; then
           SOLANA_VERSION="${{ github.event.inputs.solana_version }}"
           echo "Using override Solana version: ${SOLANA_VERSION}"
         else
-          SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-          echo "Detected Solana version: ${SOLANA_VERSION}"
+          # First try anchor.toml
+          SOLANA_VERSION=$(extract_from_anchor_toml "solana")
+          if [ -n "${SOLANA_VERSION}" ]; then
+            echo "Detected Solana version from anchor.toml: ${SOLANA_VERSION}"
+          else
+            echo "No Solana version found in anchor.toml, checking Cargo.lock..."
+            # Fallback to Cargo.lock
+            if [ -f "Cargo.lock" ]; then
+              SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2 || true)
+              if [ -n "${SOLANA_VERSION}" ]; then
+                echo "Detected Solana version from Cargo.lock: ${SOLANA_VERSION}"
+              else
+                echo "⚠️  No Solana version found in Cargo.lock"
+              fi
+            else
+              echo "⚠️  Cargo.lock not found"
+            fi
+          fi
         fi
-        echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
-        echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
 
-        # Extract Anchor version from Cargo.lock or use override
+        # Ensure clean version output
+        if [ -n "${SOLANA_VERSION}" ]; then
+          # Remove any newlines and ensure we only have the version
+          SOLANA_VERSION=$(echo "${SOLANA_VERSION}" | tr -d '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || true)
+          if [ -n "${SOLANA_VERSION}" ]; then
+            echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
+            echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
+          fi
+        fi
+
+        # Extract Anchor version
         if [ -n "${{ github.event.inputs.anchor_version }}" ]; then
           ANCHOR_VERSION="${{ github.event.inputs.anchor_version }}"
           echo "Using override Anchor version: ${ANCHOR_VERSION}"
         else
-          # Check if anchor-lang exists in Cargo.lock
-          if grep -q 'name = "anchor-lang"' Cargo.lock; then
-            ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-            echo "Detected Anchor version: ${ANCHOR_VERSION}"
+          # First try anchor.toml
+          ANCHOR_VERSION=$(extract_from_anchor_toml "anchor")
+          if [ -n "${ANCHOR_VERSION}" ]; then
+            echo "Detected Anchor version from anchor.toml: ${ANCHOR_VERSION}"
+          else
+            echo "No Anchor version found in anchor.toml, checking Cargo.lock..."
+            # Fallback to Cargo.lock
+            if [ -f "Cargo.lock" ]; then
+              if grep -q 'name = "anchor-lang"' Cargo.lock; then
+                ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2 || true)
+                echo "Detected Anchor version from Cargo.lock: ${ANCHOR_VERSION}"
+              else
+                echo "⚠️  No Anchor version found in Cargo.lock"
+              fi
+            else
+              echo "⚠️  Cargo.lock not found"
+            fi
+          fi
+        fi
+
+        # Ensure clean version output
+        if [ -n "${ANCHOR_VERSION}" ]; then
+          # Remove any newlines and ensure we only have the version
+          ANCHOR_VERSION=$(echo "${ANCHOR_VERSION}" | tr -d '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || true)
+          if [ -n "${ANCHOR_VERSION}" ]; then
             echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
             echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
-          else
-            echo "No Anchor version found in Cargo.lock"
           fi
         fi
 
@@ -46,6 +122,6 @@ runs:
         echo "Content of GITHUB_ENV file:"
         cat $GITHUB_ENV
         echo "=== Direct Environment Variables ==="
-        echo "SOLANA_VERSION: $SOLANA_VERSION"
+        echo "SOLANA_VERSION: ${SOLANA_VERSION:-not found}"
         echo "ANCHOR_VERSION: ${ANCHOR_VERSION:-not found}"
         echo "==========================="

@@ -4,6 +4,14 @@ inputs:
   program:
     description: "Program to test"
     required: true
+  solana_version:
+    description: "Solana version used for cache"
+    required: true
+    default: ""
+  anchor_version:
+    description: "Anchor version used for cache"
+    required: true
+    default: ""
   features:
     description: "Features that will be passed into the test"
     required: false
@@ -15,7 +23,7 @@ runs:
       uses: actions/cache@v3
       with:
         path: ./node_modules/
-        key: node-modules-${{ runner.os }}-build-v0.1
+        key: node-modules-${{ runner.os }}-build-v0.1-${{ inputs.anchor_version }}-${{ inputs.solana_version }}
 
     - name: Install Node.js dependencies
       shell: bash
@@ -30,7 +38,7 @@ runs:
           ~/.cargo/git/db/
           target/
           test-ledger/
-        shared-key: "anchor-test-${{ steps.versions.outputs.anchor_version }}-${{ steps.versions.outputs.solana_version }}"
+        shared-key: "anchor-test-${{ inputs.anchor_version }}-${{ inputs.solana_version }}"
 
     - name: Run Anchor Tests
       shell: bash
