@@ -19,27 +19,34 @@ runs:
         echo "Current directory: $(pwd)"
         echo "Directory contents:"
         ls -la
-        echo "Looking for anchor.toml..."
-        find . -name "anchor.toml" || echo "No anchor.toml found in directory tree"
+        echo "Looking for Anchor.toml/anchor.toml..."
+        find . -iname "anchor.toml" || echo "No anchor.toml found in directory tree"
         echo "=======================" 
 
         # Function to extract version from anchor.toml
         extract_from_anchor_toml() {
           local key=$1
-          # First try current directory
-          if [ -f "anchor.toml" ]; then
+          # Try both uppercase and lowercase variants
+          if [ -f "Anchor.toml" ]; then
+            echo "Found Anchor.toml in current directory"
+            version=$(grep -i "^${key}_version *= *\".*\"" Anchor.toml | cut -d'"' -f2)
+            if [ -n "$version" ]; then
+              echo "$version"
+              return 0
+            fi
+          elif [ -f "anchor.toml" ]; then
             echo "Found anchor.toml in current directory"
-            version=$(grep "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2)
+            version=$(grep -i "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2)
             if [ -n "$version" ]; then
               echo "$version"
               return 0
             fi
           # Then try to find it in subdirectories
           else
-            anchor_toml=$(find . -name "anchor.toml" -type f | head -n 1)
+            anchor_toml=$(find . -iname "anchor.toml" -type f | head -n 1)
             if [ -n "$anchor_toml" ]; then
               echo "Found anchor.toml at: $anchor_toml"
-              version=$(grep "^${key}_version *= *\".*\"" "$anchor_toml" | cut -d'"' -f2)
+              version=$(grep -i "^${key}_version *= *\".*\"" "$anchor_toml" | cut -d'"' -f2)
               if [ -n "$version" ]; then
                 echo "$version"
                 return 0
