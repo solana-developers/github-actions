@@ -14,12 +14,39 @@ runs:
     - id: extract
       shell: bash
       run: |
+        # Debug information
+        echo "=== Debug Information ==="
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Looking for anchor.toml..."
+        find . -name "anchor.toml" || echo "No anchor.toml found in directory tree"
+        echo "=======================" 
+
         # Function to extract version from anchor.toml
         extract_from_anchor_toml() {
           local key=$1
+          # First try current directory
           if [ -f "anchor.toml" ]; then
-            grep "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2
+            echo "Found anchor.toml in current directory"
+            version=$(grep "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2)
+            if [ -n "$version" ]; then
+              echo "$version"
+              return 0
+            fi
+          # Then try to find it in subdirectories
+          else
+            anchor_toml=$(find . -name "anchor.toml" -type f | head -n 1)
+            if [ -n "$anchor_toml" ]; then
+              echo "Found anchor.toml at: $anchor_toml"
+              version=$(grep "^${key}_version *= *\".*\"" "$anchor_toml" | cut -d'"' -f2)
+              if [ -n "$version" ]; then
+                echo "$version"
+                return 0
+              fi
+            fi
           fi
+          return 1
         }
 
         # Extract Solana version
@@ -32,9 +59,18 @@ runs:
           if [ -n "${SOLANA_VERSION}" ]; then
             echo "Detected Solana version from anchor.toml: ${SOLANA_VERSION}"
           else
+            echo "No Solana version found in anchor.toml, checking Cargo.lock..."
             # Fallback to Cargo.lock
-            SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-            echo "Detected Solana version from Cargo.lock: ${SOLANA_VERSION}"
+            if [ -f "Cargo.lock" ]; then
+              SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+              if [ -n "${SOLANA_VERSION}" ]; then
+                echo "Detected Solana version from Cargo.lock: ${SOLANA_VERSION}"
+              else
+                echo "⚠️  No Solana version found in Cargo.lock"
+              fi
+            else
+              echo "⚠️  Cargo.lock not found"
+            fi
           fi
         fi
         echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
@@ -50,12 +86,17 @@ runs:
           if [ -n "${ANCHOR_VERSION}" ]; then
             echo "Detected Anchor version from anchor.toml: ${ANCHOR_VERSION}"
           else
+            echo "No Anchor version found in anchor.toml, checking Cargo.lock..."
             # Fallback to Cargo.lock
-            if grep -q 'name = "anchor-lang"' Cargo.lock; then
-              ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
-              echo "Detected Anchor version from Cargo.lock: ${ANCHOR_VERSION}"
+            if [ -f "Cargo.lock" ]; then
+              if grep -q 'name = "anchor-lang"' Cargo.lock; then
+                ANCHOR_VERSION=$(grep -A 2 'name = "anchor-lang"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+                echo "Detected Anchor version from Cargo.lock: ${ANCHOR_VERSION}"
+              else
+                echo "⚠️  No Anchor version found in Cargo.lock"
+              fi
             else
-              echo "No Anchor version found in anchor.toml or Cargo.lock"
+              echo "⚠️  Cargo.lock not found"
             fi
           fi
         fi
