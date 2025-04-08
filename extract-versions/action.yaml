@@ -26,16 +26,17 @@ runs:
         # Function to extract version from anchor.toml
         extract_from_anchor_toml() {
           local key=$1
+          local version=""
           # Try both uppercase and lowercase variants
           if [ -f "Anchor.toml" ]; then
-            echo "Found Anchor.toml in current directory"
+            echo "Found Anchor.toml in current directory" >&2
             version=$(grep -i "^${key}_version *= *\".*\"" Anchor.toml | cut -d'"' -f2)
             if [ -n "$version" ]; then
               echo "$version"
               return 0
             fi
           elif [ -f "anchor.toml" ]; then
-            echo "Found anchor.toml in current directory"
+            echo "Found anchor.toml in current directory" >&2
             version=$(grep -i "^${key}_version *= *\".*\"" anchor.toml | cut -d'"' -f2)
             if [ -n "$version" ]; then
               echo "$version"
@@ -45,7 +46,7 @@ runs:
           else
             anchor_toml=$(find . -iname "anchor.toml" -type f | head -n 1)
             if [ -n "$anchor_toml" ]; then
-              echo "Found anchor.toml at: $anchor_toml"
+              echo "Found anchor.toml at: $anchor_toml" >&2
               version=$(grep -i "^${key}_version *= *\".*\"" "$anchor_toml" | cut -d'"' -f2)
               if [ -n "$version" ]; then
                 echo "$version"
@@ -80,8 +81,14 @@ runs:
             fi
           fi
         fi
-        echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
-        echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
+
+        # Ensure clean version output
+        if [ -n "${SOLANA_VERSION}" ]; then
+          # Remove any newlines and ensure we only have the version
+          SOLANA_VERSION=$(echo "${SOLANA_VERSION}" | tr -d '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          echo "solana_version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
+          echo "SOLANA_VERSION=${SOLANA_VERSION}" >> $GITHUB_ENV
+        fi
 
         # Extract Anchor version
         if [ -n "${{ github.event.inputs.anchor_version }}" ]; then
@@ -108,7 +115,10 @@ runs:
           fi
         fi
 
+        # Ensure clean version output
         if [ -n "${ANCHOR_VERSION}" ]; then
+          # Remove any newlines and ensure we only have the version
+          ANCHOR_VERSION=$(echo "${ANCHOR_VERSION}" | tr -d '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
           echo "anchor_version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
           echo "ANCHOR_VERSION=${ANCHOR_VERSION}" >> $GITHUB_ENV
         fi
