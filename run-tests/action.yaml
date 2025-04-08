@@ -23,7 +23,7 @@ runs:
       uses: actions/cache@v3
       with:
         path: ./node_modules/
-        key: node-modules-${{ runner.os }}-build-v0.1
+        key: node-modules-${{ runner.os }}-build-v0.1-${{ inputs.anchor_version }}-${{ inputs.solana_version }}
 
     - name: Install Node.js dependencies
       shell: bash
