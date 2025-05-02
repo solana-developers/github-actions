@@ -18,16 +18,34 @@ inputs:
     required: true
   program-keypair:
     description: "Program address keypair for initial deployment"
-    required: true
+    required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Write keypairs
+    - name: Write keypairs and optionally verify program-id keypair
       shell: bash
       run: |
         echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
-        echo "$PROGRAM_KEYPAIR" > ./program-keypair.json && chmod 600 ./program-keypair.json
+
+        if [ -z "$PROGRAM_KEYPAIR" ]; then
+          echo "ℹ️ No program-keypair provided — skipping program-id verification."
+        else
+          echo "$PROGRAM_KEYPAIR" > ./program-keypair.json && chmod 600 ./program-keypair.json
+
+          echo "🔍 Verifying program-keypair matches inputs.program-id..."
+          PROGRAM_PUBKEY=$(solana-keygen pubkey ./program-keypair.json)
+
+          echo "Expected: '${{ inputs.program-id }}'"
+          echo "Actual:   '$PROGRAM_PUBKEY'"
+
+          if [ "$PROGRAM_PUBKEY" != "${{ inputs.program-id }}" ]; then
+            echo "❌ Error: 'program-id' does not match public key of 'program-keypair'"
+            exit 1
+          fi
+
+          echo "✅ Verified: program-id matches program-keypair."
+        fi
       env:
         DEPLOY_KEYPAIR: ${{ inputs.keypair }}
         PROGRAM_KEYPAIR: ${{ inputs.program-keypair }}
@@ -40,6 +58,11 @@ runs:
           echo "exists=true" >> $GITHUB_OUTPUT
         else
           echo "exists=false" >> $GITHUB_OUTPUT
+          
+          if [ -z "${{ inputs.program-keypair }}" ]; then
+            echo "❌ Error: program-keypair input is required for initial deployment (program does not exist yet)."
+            exit 1
+          fi
         fi
 
     - name: Deploy new program
