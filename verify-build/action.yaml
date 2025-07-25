@@ -108,6 +108,7 @@ runs:
           --uploader ${{ inputs.vault-address }} \
           --commit-hash ${{ inputs.commit-hash }} \
           --url ${{ inputs.rpc-url }} \
+          --library-name ${{ inputs.program }} \
           --encoding base64 | tail -n 1)
           
         # Verify we got a base64 string
