@@ -164,6 +164,10 @@ npx ts-node scripts/squad-closebuffer.ts \
  --program "BhV84MZrRnEvtWLdWMRJGJr1GbusxfVMHAwc3pq92g4z"
 ```
 
+# Release v0.2.7
+
+## Pass library name to export pda tx
+
 # Release v0.2.3
 
 ## Bug Fixes
