@@ -12,6 +12,7 @@ It is highly recommended to use the squads integration for program deployments.
 - ✅ Program deploys for both devnet and mainnet
 - ✅ Compute budget optimization
 - ✅ Retry mechanisms for RPC failures
+- ✅ Program Metadata IDL uploads (alternative to Anchor IDL)
 
 ### How to use
 
@@ -107,11 +108,44 @@ Customize the workflow to your needs!
     - `keypair`: Deployer keypair
     - `idl-authority`: Authority for IDL updates
 
+### Program Metadata (IDL Upload via program-metadata program)
+
+These actions use the [program-metadata](https://github.com/solana-program/program-metadata) program to attach metadata (IDL, security.txt, etc.) to any Solana program. This is the newer alternative to Anchor's built-in IDL commands and supports any program, not just Anchor programs.
+
+- `metadata-upload`: Writes metadata directly to a program or from a pre-created buffer
+  - Supports any seed type (idl, security, or custom)
+  - Handles both direct upload and Squads multisig workflows
+  - Can export transactions for Squads signing
+  - Inputs:
+    - `program-id`: The program address
+    - `idl-path`: Path to the metadata file (for direct upload)
+    - `seed`: Metadata seed type (default: "idl")
+    - `rpc-url`: Solana RPC endpoint
+    - `keypair`: Deployer/authority keypair
+    - `buffer`: Buffer address (for Squads workflow, instead of direct file upload)
+    - `close-buffer`: Address to receive rent when closing buffer, or "true" for payer
+    - `priority-fees`: Priority fees in micro-lamports (default: 100000)
+    - `export`: Export transactions for multisig (provide vault address)
+    - `export-encoding`: Encoding for exported transactions (default: base64)
+
+- `write-metadata-buffer`: Creates a program-metadata buffer and transfers authority (for Squads multisig workflow)
+  - Creates buffer with metadata content
+  - Transfers buffer authority to the Squads vault
+  - Outputs the buffer address for use in `metadata-upload`
+  - Inputs:
+    - `idl-path`: Path to the metadata file
+    - `rpc-url`: Solana RPC endpoint
+    - `keypair`: Keypair for buffer creation
+    - `buffer-authority`: Address to set as buffer authority (e.g. Squads vault)
+    - `priority-fees`: Priority fees in micro-lamports (default: 100000)
+  - Outputs:
+    - `buffer`: Created buffer address
+
 ### Additional Actions
 
 - `build-anchor`: Specialized Anchor program builder
 - `program-upgrade`: Handles the exteding of the program account in case the program is getting bigger and either sets the buffer or skips that in case of squads deploy
-- `idl-upload`: Either sets the IDL buffer or skips that in case of squads deploy
+- `idl-upload`: Either sets the Anchor IDL buffer or skips that in case of squads deploy
 - `verify-build`: Verifies on-chain programs match source using solana-verify andthe osec api
 
 ## 📝 Todo List
@@ -143,6 +177,7 @@ Customize the workflow to your needs!
 
 - [x] Add running tests
   - Research support for different test frameworks
+- [x] Add program-metadata IDL upload support
 - [ ] Add Codama support
 - [ ] Add to solana helpers or mucho -> release
 - [ ] Write guide and record video

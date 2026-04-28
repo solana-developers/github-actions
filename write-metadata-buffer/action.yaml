@@ -1,0 +1,82 @@
+name: "Write Metadata Buffer"
+description: "Creates a program-metadata buffer for Squads multisig workflow"
+inputs:
+  idl-path:
+    description: "Path to the IDL or metadata JSON file"
+    required: true
+  rpc-url:
+    description: "Solana RPC URL"
+    required: true
+  keypair:
+    description: "The keypair to use for buffer creation"
+    required: true
+  buffer-authority:
+    description: "The address to set as buffer authority (e.g. Squads vault)"
+    required: true
+  priority-fees:
+    description: "Priority fees in micro-lamports per compute unit"
+    required: false
+    default: "100000"
+
+outputs:
+  buffer:
+    description: "Created metadata buffer address"
+    value: ${{ steps.create-buffer.outputs.buffer }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Write keypair
+      shell: bash
+      run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
+      env:
+        DEPLOY_KEYPAIR: ${{ inputs.keypair }}
+
+    - name: Create metadata buffer
+      id: create-buffer
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 10
+        max_attempts: 3
+        shell: bash
+        command: |
+          echo "Creating program-metadata buffer from ${{ inputs.idl-path }}..."
+
+          OUTPUT=$(NO_COLOR=1 npx @solana-program/program-metadata@latest create-buffer \
+            "${{ inputs.idl-path }}" \
+            --keypair ./deploy-keypair.json \
+            --rpc "${{ inputs.rpc-url }}" \
+            --priority-fees ${{ inputs.priority-fees }} 2>&1)
+
+          echo "$OUTPUT"
+
+          BUFFER=$(echo "$OUTPUT" | grep -i "buffer:" | head -1 | grep -oE '[1-9A-HJ-NP-Za-km-z]{32,44}')
+          if [ -z "$BUFFER" ]; then
+            echo "Error: Could not extract buffer address from output"
+            exit 1
+          fi
+
+          echo "Found buffer: $BUFFER"
+          echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+
+    - name: Transfer buffer authority
+      if: steps.create-buffer.outputs.buffer != ''
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 5
+        max_attempts: 3
+        shell: bash
+        command: |
+          BUFFER="${{ steps.create-buffer.outputs.buffer }}"
+          echo "Transferring buffer authority for $BUFFER to ${{ inputs.buffer-authority }}"
+
+          NO_COLOR=1 npx @solana-program/program-metadata@latest set-buffer-authority "$BUFFER" \
+            --new-authority ${{ inputs.buffer-authority }} \
+            --keypair ./deploy-keypair.json \
+            --rpc "${{ inputs.rpc-url }}" \
+            --priority-fees ${{ inputs.priority-fees }}
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: rm -f ./deploy-keypair.json
