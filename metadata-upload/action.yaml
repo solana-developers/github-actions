@@ -1,0 +1,92 @@
+name: "Upload Metadata"
+description: "Uploads metadata (IDL, security, etc.) to a program via the program-metadata program"
+inputs:
+  program-id:
+    description: "The program address to attach metadata to"
+    required: true
+  idl-path:
+    description: "Path to the IDL or metadata JSON file (required for direct upload, ignored when using buffer)"
+    required: false
+  seed:
+    description: "Metadata seed type (e.g. idl, security)"
+    required: false
+    default: "idl"
+  rpc-url:
+    description: "Solana RPC URL"
+    required: true
+  keypair:
+    description: "The keypair to use (must be the program upgrade authority for canonical metadata)"
+    required: true
+  buffer:
+    description: "Buffer address to use instead of direct file upload (for Squads workflow)"
+    required: false
+  close-buffer:
+    description: "Address to receive rent when closing the buffer after use. Set to 'true' to send to the payer."
+    required: false
+  priority-fees:
+    description: "Priority fees in micro-lamports per compute unit"
+    required: false
+    default: "100000"
+  export:
+    description: "Export transactions instead of executing (provide a Squads vault address to override authority)"
+    required: false
+  export-encoding:
+    description: "Encoding for exported transactions (none, utf8, base58, base64)"
+    required: false
+    default: "base64"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Write keypair
+      shell: bash
+      run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
+      env:
+        DEPLOY_KEYPAIR: ${{ inputs.keypair }}
+
+    - name: Upload metadata
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: |
+          CMD="npx @solana-program/program-metadata@latest write"
+          CMD="$CMD ${{ inputs.seed }}"
+          CMD="$CMD ${{ inputs.program-id }}"
+
+          if [ -n "${{ inputs.buffer }}" ]; then
+            CMD="$CMD --buffer ${{ inputs.buffer }}"
+            echo "Writing metadata from buffer ${{ inputs.buffer }}..."
+          elif [ -n "${{ inputs.idl-path }}" ]; then
+            CMD="$CMD ${{ inputs.idl-path }}"
+            echo "Writing metadata from file ${{ inputs.idl-path }}..."
+          else
+            echo "Error: Either idl-path or buffer must be provided"
+            exit 1
+          fi
+
+          CMD="$CMD --keypair ./deploy-keypair.json"
+          CMD="$CMD --rpc ${{ inputs.rpc-url }}"
+          CMD="$CMD --priority-fees ${{ inputs.priority-fees }}"
+
+          if [ -n "${{ inputs.close-buffer }}" ]; then
+            if [ "${{ inputs.close-buffer }}" = "true" ]; then
+              CMD="$CMD --close-buffer"
+            else
+              CMD="$CMD --close-buffer ${{ inputs.close-buffer }}"
+            fi
+          fi
+
+          if [ -n "${{ inputs.export }}" ]; then
+            CMD="$CMD --export ${{ inputs.export }}"
+            CMD="$CMD --export-encoding ${{ inputs.export-encoding }}"
+          fi
+
+          echo "Running: $CMD"
+          NO_COLOR=1 $CMD
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: rm -f ./deploy-keypair.json
