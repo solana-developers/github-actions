@@ -19,7 +19,13 @@ runs:
           FEATURES="--features $FEATURES"
         fi
 
-        anchor build -p ${{ inputs.program }} -- $FEATURES
+        IGNORE_KEYS=""
+        ANCHOR_MAJOR=$(anchor --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | cut -d. -f1)
+        if [ "$ANCHOR_MAJOR" -ge 1 ] 2>/dev/null; then
+          IGNORE_KEYS="--ignore-keys"
+        fi
+
+        anchor build -p ${{ inputs.program }} $IGNORE_KEYS -- $FEATURES
     - name: Copy artifacts from container
       shell: bash
       run: |
