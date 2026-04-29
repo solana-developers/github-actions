@@ -42,7 +42,7 @@ runs:
         command: |
           echo "Creating program-metadata buffer from ${{ inputs.idl-path }}..."
 
-          OUTPUT=$(NO_COLOR=1 npx @solana-program/program-metadata@latest create-buffer \
+          OUTPUT=$(NO_COLOR=1 npx @solana-program/program-metadata@0.5.1 create-buffer \
             "${{ inputs.idl-path }}" \
             --keypair ./deploy-keypair.json \
             --rpc "${{ inputs.rpc-url }}" \
@@ -70,7 +70,7 @@ runs:
           BUFFER="${{ steps.create-buffer.outputs.buffer }}"
           echo "Transferring buffer authority for $BUFFER to ${{ inputs.buffer-authority }}"
 
-          NO_COLOR=1 npx @solana-program/program-metadata@latest set-buffer-authority "$BUFFER" \
+          NO_COLOR=1 npx @solana-program/program-metadata@0.5.1 set-buffer-authority "$BUFFER" \
             --new-authority ${{ inputs.buffer-authority }} \
             --keypair ./deploy-keypair.json \
             --rpc "${{ inputs.rpc-url }}" \

@@ -51,7 +51,7 @@ runs:
         max_attempts: 50
         shell: bash
         command: |
-          CMD="npx @solana-program/program-metadata@latest write"
+          CMD="npx @solana-program/program-metadata@0.5.1 write"
           CMD="$CMD ${{ inputs.seed }}"
           CMD="$CMD ${{ inputs.program-id }}"
 
