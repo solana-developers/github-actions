@@ -105,16 +105,10 @@ runs:
         key: anchor-cli-${{ runner.os }}-v0003-${{ inputs.anchor_version }}
 
     - name: Install Anchor CLI
-      shell: bash
       if: steps.cache-anchor-cli.outputs.cache-hit != 'true' && inputs.anchor_version != ''
-      run: |
-        VERSION="${{ inputs.anchor_version  }}"
-        echo "=== Installation Debug Info ==="
-        echo "Installing Anchor version: $VERSION"
-        echo "=== Starting Installation ==="
-        cargo install --git https://github.com/coral-xyz/anchor --tag "v$VERSION" anchor-cli --force
-        echo "=== Installation Complete ==="
-        anchor --version
+      uses: taiki-e/install-action@e1c4cd42111751368541a7cb5db3522bd1f846a4 # v2.78.0
+      with:
+        tool: anchor-cli@${{ inputs.anchor_version }}
 
     - name: Verify Anchor Installation
       if: inputs.anchor_version != ''
@@ -141,8 +135,9 @@ runs:
 
     - name: Install Solana Verify
       if: steps.cache-solana-verify.outputs.cache-hit != 'true' && inputs.verify_version != ''
-      shell: bash
-      run: cargo install solana-verify --version ${{ inputs.verify_version }}
+      uses: taiki-e/install-action@e1c4cd42111751368541a7cb5db3522bd1f846a4 # v2.78.0
+      with:
+        tool: solana-verify@${{ inputs.verify_version }}
 
     - name: Verify Installation
       if: inputs.verify_version != ''
@@ -163,6 +158,7 @@ runs:
         key: toml-cli-${{ runner.os }}-v0002
 
     - name: Install toml-cli
-      run: (cargo install toml-cli || true)
       if: steps.cache-toml-cli.outputs.cache-hit != 'true'
-      shell: bash
+      uses: taiki-e/install-action@e1c4cd42111751368541a7cb5db3522bd1f846a4 # v2.78.0
+      with:
+        tool: toml-cli
