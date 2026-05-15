@@ -34,7 +34,7 @@ runs:
 
     - name: Create metadata buffer
       id: create-buffer
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
         timeout_minutes: 10
         max_attempts: 3
@@ -61,7 +61,7 @@ runs:
 
     - name: Transfer buffer authority
       if: steps.create-buffer.outputs.buffer != ''
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
         timeout_minutes: 5
         max_attempts: 3

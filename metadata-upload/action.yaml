@@ -45,7 +45,7 @@ runs:
         DEPLOY_KEYPAIR: ${{ inputs.keypair }}
 
     - name: Upload metadata
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
         timeout_minutes: 10
         max_attempts: 50
