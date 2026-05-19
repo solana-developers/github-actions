@@ -115,7 +115,6 @@ Customize the workflow to your needs!
     - `export-verify-pda`: Export a verify PDA transaction
     - `repo-url`: GitHub repository URL for the verify PDA transaction
     - `commit-hash`: Git commit hash for the verify PDA transaction
-    - `mount-path`: Program directory path for the verify PDA transaction
 
 - `write-idl-buffer`: Writes an Anchor IDL buffer that will then later be set either from the provided keypair or from the squads multisig
   - Creates IDL buffer

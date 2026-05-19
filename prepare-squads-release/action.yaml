@@ -36,10 +36,6 @@ inputs:
     description: "Git commit hash to verify against"
     required: false
     default: ""
-  mount-path:
-    description: "Path to the program directory for solana-verify PDA export"
-    required: false
-    default: ""
 
 outputs:
   buffer:
@@ -50,7 +46,7 @@ outputs:
     value: ${{ steps.write-metadata-buffer.outputs.buffer }}
   pda-tx:
     description: "Base64-encoded verify PDA transaction"
-    value: ${{ steps.export-verify-pda.outputs.tx }}
+    value: ${{ steps.export-verify-pda.outputs.pda_tx }}
 
 runs:
   using: "composite"
@@ -60,6 +56,10 @@ runs:
       run: |
         if [ "${{ inputs.export-verify-pda }}" = "true" ] && [ -z "${{ inputs.repo-url }}" ]; then
           echo "Error: repo-url is required when export-verify-pda is true"
+          exit 1
+        fi
+        if [ "${{ inputs.export-verify-pda }}" = "true" ] && [ -z "${{ inputs.commit-hash }}" ]; then
+          echo "Error: commit-hash is required when export-verify-pda is true"
           exit 1
         fi
 
@@ -88,36 +88,17 @@ runs:
     - name: Export verify PDA transaction
       id: export-verify-pda
       if: inputs.export-verify-pda == 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        ARGS=""
-
-        if [ -n "${{ inputs.mount-path }}" ]; then
-          ARGS="$ARGS --mount-path ${{ inputs.mount-path }}"
-        fi
-
-        if [ -n "${{ inputs.commit-hash }}" ]; then
-          ARGS="$ARGS --commit-hash ${{ inputs.commit-hash }}"
-        fi
-
-        TX=$(solana-verify export-pda-tx \
-          ${{ inputs.repo-url }} \
-          --program-id ${{ inputs.program-id }} \
-          --uploader ${{ inputs.squads-vault }} \
-          --url ${{ inputs.rpc-url }} \
-          --library-name ${{ inputs.program }} \
-          --encoding base64 \
-          $ARGS | tail -n 1)
-
-        if [ -z "$TX" ] || [[ ! "$TX" =~ ^[A-Za-z0-9+/=]+$ ]]; then
-          echo "Error: Invalid base64 transaction"
-          echo "Got: $TX"
-          exit 1
-        fi
-
-        echo "tx=$TX" >> $GITHUB_OUTPUT
+      uses: solana-developers/github-actions/verify-build@15e43c56b2ad2047dde732d807082570de2b8486
+      with:
+        program-id: ${{ inputs.program-id }}
+        program: ${{ inputs.program }}
+        rpc-url: ${{ inputs.rpc-url }}
+        keypair: ${{ inputs.keypair }}
+        repo-url: ${{ inputs.repo-url }}
+        commit-hash: ${{ inputs.commit-hash }}
+        network: "mainnet"
+        use-squads: "true"
+        vault-address: ${{ inputs.squads-vault }}
 
     - name: Write summary
       shell: bash
