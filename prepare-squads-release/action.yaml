@@ -67,27 +67,9 @@ runs:
           exit 1
         fi
 
-    - name: Link reusable actions
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        ACTION_ROOT=$(cd "$ACTION_PATH/.." && pwd)
-        LINK_PATH=".github-actions/solana-developers-github-actions"
-
-        mkdir -p "$(dirname "$LINK_PATH")"
-        if [ -e "$LINK_PATH" ] && [ ! -L "$LINK_PATH" ]; then
-          echo "Error: $LINK_PATH already exists and is not a symlink"
-          exit 1
-        fi
-
-        ln -sfn "$ACTION_ROOT" "$LINK_PATH"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-
     - name: Write program buffer
       id: write-program-buffer
-      uses: ./.github-actions/solana-developers-github-actions/write-program-buffer
+      uses: solana-developers/github-actions/write-program-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
       with:
         program-id: ${{ inputs.program-id }}
         program: ${{ inputs.program }}
@@ -101,7 +83,7 @@ runs:
     - name: Write metadata buffer
       id: write-metadata-buffer
       if: inputs.metadata-path != ''
-      uses: ./.github-actions/solana-developers-github-actions/write-metadata-buffer
+      uses: solana-developers/github-actions/write-metadata-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
       with:
         idl-path: ${{ inputs.metadata-path }}
         rpc-url: ${{ inputs.rpc-url }}
