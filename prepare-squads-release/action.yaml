@@ -69,7 +69,7 @@ runs:
 
     - name: Write program buffer
       id: write-program-buffer
-      uses: solana-developers/github-actions/write-program-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
+      uses: dev-jodee/github-actions/write-program-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
       with:
         program-id: ${{ inputs.program-id }}
         program: ${{ inputs.program }}
@@ -83,7 +83,7 @@ runs:
     - name: Write metadata buffer
       id: write-metadata-buffer
       if: inputs.metadata-path != ''
-      uses: solana-developers/github-actions/write-metadata-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
+      uses: dev-jodee/github-actions/write-metadata-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
       with:
         idl-path: ${{ inputs.metadata-path }}
         rpc-url: ${{ inputs.rpc-url }}
