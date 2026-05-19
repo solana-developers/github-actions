@@ -96,8 +96,6 @@ Customize the workflow to your needs!
     - `keypair`: Deployer keypair
     - `buffer-authority-address`: Authority for the buffer
     - `priority-fee`: Transaction priority fee
-    - `extend-program`: Extend the program account before buffer creation if the new program is larger
-    - `transfer-authority-on-new-program`: Transfer buffer authority even when the target program account does not exist yet
 
 - `prepare-squads-release`: Creates release buffers for a Squads-controlled upgrade without creating a Squads proposal from CI
 
@@ -118,7 +116,6 @@ Customize the workflow to your needs!
     - `repo-url`: GitHub repository URL for the verify PDA transaction
     - `commit-hash`: Git commit hash for the verify PDA transaction
     - `mount-path`: Program directory path for the verify PDA transaction
-    - `extend-program`: Extend the program account before buffer creation if the new program is larger
 
 - `write-idl-buffer`: Writes an Anchor IDL buffer that will then later be set either from the provided keypair or from the squads multisig
   - Creates IDL buffer

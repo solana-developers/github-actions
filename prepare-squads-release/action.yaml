@@ -40,10 +40,6 @@ inputs:
     description: "Path to the program directory for solana-verify PDA export"
     required: false
     default: ""
-  extend-program:
-    description: "Extend the program account before buffer creation if the new program is larger"
-    required: false
-    default: "true"
 
 outputs:
   buffer:
@@ -69,7 +65,7 @@ runs:
 
     - name: Write program buffer
       id: write-program-buffer
-      uses: dev-jodee/github-actions/write-program-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
+      uses: solana-developers/github-actions/write-program-buffer@15e43c56b2ad2047dde732d807082570de2b8486
       with:
         program-id: ${{ inputs.program-id }}
         program: ${{ inputs.program }}
@@ -77,13 +73,11 @@ runs:
         keypair: ${{ inputs.keypair }}
         buffer-authority-address: ${{ inputs.squads-vault }}
         priority-fee: ${{ inputs.priority-fee }}
-        extend-program: ${{ inputs.extend-program }}
-        transfer-authority-on-new-program: "true"
 
     - name: Write metadata buffer
       id: write-metadata-buffer
       if: inputs.metadata-path != ''
-      uses: dev-jodee/github-actions/write-metadata-buffer@b9f6b0d5be6d4f6a6cf7af373c5fd32416c8c896
+      uses: solana-developers/github-actions/write-metadata-buffer@15e43c56b2ad2047dde732d807082570de2b8486
       with:
         idl-path: ${{ inputs.metadata-path }}
         rpc-url: ${{ inputs.rpc-url }}
