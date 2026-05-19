@@ -20,6 +20,14 @@ inputs:
     description: "Priority fee in microlamports"
     required: false
     default: "100000"
+  extend-program:
+    description: "Extend the program account before buffer creation if the new program is larger"
+    required: false
+    default: "true"
+  transfer-authority-on-new-program:
+    description: "Transfer buffer authority even when the target program account does not exist yet"
+    required: false
+    default: "false"
 
 outputs:
   buffer:
@@ -67,7 +75,7 @@ runs:
         set -e  # Restore error checking
 
     - name: Resize program if needed
-      if: steps.check-program.outputs.exists == 'true'
+      if: inputs.extend-program == 'true' && steps.check-program.outputs.exists == 'true'
       shell: bash
       run: |
         REQUIRED_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
@@ -127,7 +135,7 @@ runs:
     # The rent for the buffer will be returned to the local keypair though once the program gets deployed in squads. So its fine.
     # If the deploy fails you can also close the buffer with the multisig using the cli command squad-closebuffer
     - name: Transfer buffer authority
-      if: steps.check-program.outputs.exists == 'true'
+      if: steps.write-buffer.outputs.buffer != '' && (steps.check-program.outputs.exists == 'true' || inputs.transfer-authority-on-new-program == 'true')
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
         timeout_minutes: 10

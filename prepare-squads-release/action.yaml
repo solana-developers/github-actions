@@ -59,12 +59,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Write keypair
-      shell: bash
-      run: echo "$DEPLOY_KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
-      env:
-        DEPLOY_KEYPAIR: ${{ inputs.keypair }}
-
     - name: Validate inputs
       shell: bash
       run: |
@@ -73,148 +67,47 @@ runs:
           exit 1
         fi
 
-    - name: Get current program size if it exists
-      id: check-program
+    - name: Link reusable actions
       shell: bash
       run: |
-        set +e
+        set -euo pipefail
 
-        echo "Checking program info..."
-        PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
-        EXIT_CODE=$?
-        echo "Raw program info output:"
-        echo "$PROGRAM_INFO"
+        ACTION_ROOT=$(cd "$ACTION_PATH/.." && pwd)
+        LINK_PATH=".github-actions/solana-developers-github-actions"
 
-        if [ $EXIT_CODE -eq 0 ]; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          CURRENT_SIZE=$(echo "$PROGRAM_INFO" | grep "Data Length:" | sed -E 's/.*Data Length: ([0-9]+).*/\1/' | cut -d ' ' -f1)
-          echo "Current program data length: $CURRENT_SIZE"
-          echo "data_len=$CURRENT_SIZE" >> $GITHUB_OUTPUT
-        else
-          if echo "$PROGRAM_INFO" | grep -q "Unable to find the account"; then
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Program does not exist yet, skipping size check"
-          else
-            echo "Error checking program: $PROGRAM_INFO"
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+        mkdir -p "$(dirname "$LINK_PATH")"
+        if [ -e "$LINK_PATH" ] && [ ! -L "$LINK_PATH" ]; then
+          echo "Error: $LINK_PATH already exists and is not a symlink"
+          exit 1
         fi
 
-        set -e
-
-    - name: Resize program if needed
-      if: inputs.extend-program == 'true' && steps.check-program.outputs.exists == 'true'
-      shell: bash
-      run: |
-        REQUIRED_SIZE=$(wc -c < ./target/deploy/${{ inputs.program }}.so)
-        CURRENT_SIZE="${{ steps.check-program.outputs.data_len }}"
-        echo "Required size: $REQUIRED_SIZE"
-        echo "Current size: $CURRENT_SIZE"
-
-        if [ "$REQUIRED_SIZE" -gt "$CURRENT_SIZE" ]; then
-          EXTEND_SIZE=$((REQUIRED_SIZE - CURRENT_SIZE))
-          echo "Program needs to be extended by $EXTEND_SIZE bytes"
-          solana program extend ${{ inputs.program-id }} $EXTEND_SIZE \
-            --keypair ./deploy-keypair.json \
-            --url ${{ inputs.rpc-url }} \
-            --commitment confirmed
-        else
-          echo "Program size is sufficient"
-        fi
+        ln -sfn "$ACTION_ROOT" "$LINK_PATH"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
 
     - name: Write program buffer
       id: write-program-buffer
-      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+      uses: ./.github-actions/solana-developers-github-actions/write-program-buffer
       with:
-        timeout_minutes: 60
-        max_attempts: 3
-        shell: bash
-        command: |
-          echo "Creating program buffer... (Attempt $RETRY_ATTEMPT of 3)"
-          OUTPUT=$(solana program write-buffer \
-            ./target/deploy/${{ inputs.program }}.so \
-            --url ${{ inputs.rpc-url }} \
-            --keypair ./deploy-keypair.json \
-            --max-sign-attempts 100 \
-            --with-compute-unit-price ${{ inputs.priority-fee }} \
-            --use-rpc \
-            2>&1)
-
-          echo "$OUTPUT"
-
-          if ! echo "$OUTPUT" | grep -q "Buffer:"; then
-            echo "Error: Buffer creation failed"
-            exit 1
-          fi
-
-          BUFFER=$(echo "$OUTPUT" | grep "Buffer:" | cut -d " " -f2)
-          if [ -z "$BUFFER" ]; then
-            echo "Error: Could not extract buffer address"
-            exit 1
-          fi
-
-          echo "Found buffer: $BUFFER"
-          echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
-
-    - name: Transfer program buffer authority
-      if: steps.write-program-buffer.outputs.buffer != ''
-      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
-      with:
-        timeout_minutes: 10
-        max_attempts: 50
-        shell: bash
-        command: |
-          BUFFER="${{ steps.write-program-buffer.outputs.buffer }}"
-          echo "Transferring program buffer authority for $BUFFER to ${{ inputs.squads-vault }}"
-          solana program set-buffer-authority $BUFFER \
-            --keypair ./deploy-keypair.json \
-            --new-buffer-authority ${{ inputs.squads-vault }} \
-            --url ${{ inputs.rpc-url }}
+        program-id: ${{ inputs.program-id }}
+        program: ${{ inputs.program }}
+        rpc-url: ${{ inputs.rpc-url }}
+        keypair: ${{ inputs.keypair }}
+        buffer-authority-address: ${{ inputs.squads-vault }}
+        priority-fee: ${{ inputs.priority-fee }}
+        extend-program: ${{ inputs.extend-program }}
+        transfer-authority-on-new-program: "true"
 
     - name: Write metadata buffer
       id: write-metadata-buffer
       if: inputs.metadata-path != ''
-      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+      uses: ./.github-actions/solana-developers-github-actions/write-metadata-buffer
       with:
-        timeout_minutes: 10
-        max_attempts: 3
-        shell: bash
-        command: |
-          echo "Creating program-metadata buffer from ${{ inputs.metadata-path }}..."
-
-          OUTPUT=$(NO_COLOR=1 npx @solana-program/program-metadata@0.5.1 create-buffer \
-            "${{ inputs.metadata-path }}" \
-            --keypair ./deploy-keypair.json \
-            --rpc "${{ inputs.rpc-url }}" \
-            --priority-fees ${{ inputs.priority-fee }} 2>&1)
-
-          echo "$OUTPUT"
-
-          BUFFER=$(echo "$OUTPUT" | grep -i "buffer:" | head -1 | grep -oE '[1-9A-HJ-NP-Za-km-z]{32,44}')
-          if [ -z "$BUFFER" ]; then
-            echo "Error: Could not extract metadata buffer address"
-            exit 1
-          fi
-
-          echo "Found metadata buffer: $BUFFER"
-          echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
-
-    - name: Transfer metadata buffer authority
-      if: steps.write-metadata-buffer.outputs.buffer != ''
-      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
-      with:
-        timeout_minutes: 5
-        max_attempts: 3
-        shell: bash
-        command: |
-          BUFFER="${{ steps.write-metadata-buffer.outputs.buffer }}"
-          echo "Transferring metadata buffer authority for $BUFFER to ${{ inputs.squads-vault }}"
-
-          NO_COLOR=1 npx @solana-program/program-metadata@0.5.1 set-buffer-authority "$BUFFER" \
-            --new-authority ${{ inputs.squads-vault }} \
-            --keypair ./deploy-keypair.json \
-            --rpc "${{ inputs.rpc-url }}" \
-            --priority-fees ${{ inputs.priority-fee }}
+        idl-path: ${{ inputs.metadata-path }}
+        rpc-url: ${{ inputs.rpc-url }}
+        keypair: ${{ inputs.keypair }}
+        buffer-authority: ${{ inputs.squads-vault }}
+        priority-fees: ${{ inputs.priority-fee }}
 
     - name: Export verify PDA transaction
       id: export-verify-pda
@@ -266,8 +159,3 @@ runs:
         echo "- Buffer authority: \`${{ inputs.squads-vault }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Create the program upgrade from Squads using the buffer above. This action does not create a Squads proposal." >> $GITHUB_STEP_SUMMARY
-
-    - name: Cleanup
-      if: always()
-      shell: bash
-      run: rm -f ./deploy-keypair.json
