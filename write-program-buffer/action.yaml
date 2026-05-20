@@ -28,10 +28,6 @@ inputs:
     description: "Maximum minutes to let a single write-buffer command run before printing diagnostics"
     required: false
     default: "55"
-  retry-timeout-minutes:
-    description: "Maximum minutes for each retry wrapper attempt"
-    required: false
-    default: "60"
   retry-attempts:
     description: "Maximum write-buffer attempts"
     required: false
@@ -65,9 +61,6 @@ runs:
         echo "Checking program info..."
         PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
         EXIT_CODE=$?
-        echo "Raw program info output:"
-        echo "$PROGRAM_INFO"
-
         if [ $EXIT_CODE -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Program exists, checking size..."
@@ -122,7 +115,6 @@ runs:
 
         echo "Creating program buffer $BUFFER"
         echo "Deployer authority: $DEPLOYER"
-        echo "Program artifact: $PROGRAM_SO"
         echo "Program artifact size: $(wc -c < "$PROGRAM_SO") bytes"
         echo "Program artifact sha256: $(shasum -a 256 "$PROGRAM_SO" | awk '{print $1}')"
         echo "Max sign attempts: ${{ inputs.max-sign-attempts }}"
