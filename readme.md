@@ -23,7 +23,7 @@ There are three examples:
 
 - [Anchor Program](https://github.com/Woody4618/anchor-github-action-example)
 - [Native Program](https://github.com/Woody4618/native-solana-github-action-example)
-- [Anchor Program using Squads](https://github.com/Woody4618/workflow-tutorial) 
+- [Anchor Program using Squads](https://github.com/Woody4618/workflow-tutorial)
 
 ### Required Secrets for specific actions
 
@@ -97,6 +97,25 @@ Customize the workflow to your needs!
     - `buffer-authority-address`: Authority for the buffer
     - `priority-fee`: Transaction priority fee
 
+- `prepare-squads-release`: Creates release buffers for a Squads-controlled upgrade without creating a Squads proposal from CI
+
+  - Creates the program buffer
+  - Transfers program buffer authority to the Squads vault
+  - Optionally creates a program-metadata buffer and transfers its authority to the Squads vault
+  - Optionally exports a `solana-verify` PDA transaction using the Squads vault as uploader
+  - Does not require the deployer keypair to be a Squads member
+  - Inputs:
+    - `program-id`: Target program ID
+    - `program`: Program name
+    - `rpc-url`: Solana RPC endpoint
+    - `keypair`: Payer keypair used for buffer preparation
+    - `squads-vault`: Squads vault to set as buffer authority
+    - `metadata-path`: Optional IDL or metadata JSON path
+    - `priority-fee`: Transaction priority fee
+    - `export-verify-pda`: Export a verify PDA transaction
+    - `repo-url`: GitHub repository URL for the verify PDA transaction
+    - `commit-hash`: Git commit hash for the verify PDA transaction
+
 - `write-idl-buffer`: Writes an Anchor IDL buffer that will then later be set either from the provided keypair or from the squads multisig
   - Creates IDL buffer
   - Sets up IDL authority
@@ -113,6 +132,7 @@ Customize the workflow to your needs!
 These actions use the [program-metadata](https://github.com/solana-program/program-metadata) program to attach metadata (IDL, security.txt, etc.) to any Solana program. This is the newer alternative to Anchor's built-in IDL commands and supports any program, not just Anchor programs.
 
 - `metadata-upload`: Writes metadata directly to a program or from a pre-created buffer
+
   - Supports any seed type (idl, security, or custom)
   - Handles both direct upload and Squads multisig workflows
   - Can export transactions for Squads signing
@@ -147,6 +167,28 @@ These actions use the [program-metadata](https://github.com/solana-program/progr
 - `program-upgrade`: Handles the exteding of the program account in case the program is getting bigger and either sets the buffer or skips that in case of squads deploy
 - `idl-upload`: Either sets the Anchor IDL buffer or skips that in case of squads deploy
 - `verify-build`: Verifies on-chain programs match source using solana-verify andthe osec api
+
+### Squads buffer-only release
+
+For teams that do not want to add a CI-owned keypair as a Squads proposer, use `prepare-squads-release`. The keypair only pays for buffer preparation transactions. The resulting program buffer is owned by the Squads vault, and the upgrade proposal can be created manually in Squads.
+
+```yaml
+- name: Prepare Squads release buffers
+  uses: solana-developers/github-actions/prepare-squads-release@main
+  with:
+    program: ${{ env.PROGRAM }}
+    program-id: ${{ env.PROGRAM_ID }}
+    rpc-url: ${{ env.RPC_URL }}
+    keypair: ${{ secrets.MAINNET_DEPLOYER_KEYPAIR }}
+    squads-vault: ${{ secrets.MAINNET_MULTISIG_VAULT }}
+    metadata-path: ./target/idl/${{ env.PROGRAM }}.json
+    priority-fee: ${{ inputs.priority-fee }}
+    export-verify-pda: "true"
+    repo-url: ${{ github.server_url }}/${{ github.repository }}
+    commit-hash: ${{ github.sha }}
+```
+
+After the action completes, use the program buffer from the job summary when creating the program upgrade in Squads.
 
 ## 📝 Todo List
 

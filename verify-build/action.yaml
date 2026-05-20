@@ -58,7 +58,6 @@ runs:
         echo "Network: ${{ github.event.inputs.network }}"
         echo "Verify: ${{ github.event.inputs.verify }}"
         echo "Has keypair: ${{ inputs.keypair != '' }}"
-        echo "RPC URL: ${{ inputs.rpc-url }}"
 
     - name: Verify Build
       shell: bash
