@@ -123,30 +123,48 @@ runs:
         echo "Program artifact sha256: $(shasum -a 256 "$PROGRAM_SO" | awk '{print $1}')"
         echo "Max sign attempts: ${{ inputs.max-sign-attempts }}"
         echo "Write timeout: ${{ inputs.write-timeout-minutes }} minutes"
+        echo "Write attempts: ${{ inputs.retry-attempts }}"
 
-        set +e
-        timeout "${{ inputs.write-timeout-minutes }}m" solana program write-buffer \
-          "$PROGRAM_SO" \
-          --url ${{ inputs.rpc-url }} \
-          --keypair ./deploy-keypair.json \
-          --buffer "$BUFFER_KEYPAIR" \
-          --max-sign-attempts ${{ inputs.max-sign-attempts }} \
-          --with-compute-unit-price ${{ inputs.priority-fee }} \
-          --use-rpc \
-          2>&1 | tee write-buffer.log
-        STATUS=${PIPESTATUS[0]}
-        set -e
+        ATTEMPT=1
+        STATUS=1
+        while [ "$ATTEMPT" -le "${{ inputs.retry-attempts }}" ]; do
+          WRITE_LOG="write-buffer-${ATTEMPT}.log"
+          echo "Starting write attempt $ATTEMPT of ${{ inputs.retry-attempts }} for buffer $BUFFER"
 
-        if [ "$STATUS" -ne 0 ]; then
+          set +e
+          timeout "${{ inputs.write-timeout-minutes }}m" solana program write-buffer \
+            "$PROGRAM_SO" \
+            --url ${{ inputs.rpc-url }} \
+            --keypair ./deploy-keypair.json \
+            --buffer "$BUFFER_KEYPAIR" \
+            --max-sign-attempts ${{ inputs.max-sign-attempts }} \
+            --with-compute-unit-price ${{ inputs.priority-fee }} \
+            --use-rpc \
+            2>&1 | tee "$WRITE_LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$STATUS" -eq 0 ]; then
+            if ! grep -q "Buffer:" "$WRITE_LOG"; then
+              echo "Warning: solana CLI output did not include a Buffer line; using pre-generated buffer address"
+            fi
+
+            echo "Found buffer: $BUFFER"
+            echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+            rm -f "$DUMPED_BUFFER"
+            exit 0
+          fi
+
           if [ "$STATUS" -eq 124 ]; then
-            echo "Error: Buffer creation timed out after ${{ inputs.write-timeout-minutes }} minutes"
+            echo "Error: Buffer write attempt $ATTEMPT timed out after ${{ inputs.write-timeout-minutes }} minutes"
           else
-            echo "Error: Buffer creation failed with exit code $STATUS"
+            echo "Error: Buffer write attempt $ATTEMPT failed with exit code $STATUS"
           fi
 
           echo "Buffer account: $BUFFER"
           echo "Checking whether the buffer was written despite the CLI exit status..."
 
+          rm -f "$DUMPED_BUFFER"
           if solana program dump "$BUFFER" "$DUMPED_BUFFER" -u ${{ inputs.rpc-url }}; then
             echo "Dumped buffer size: $(wc -c < "$DUMPED_BUFFER") bytes"
             echo "Dumped buffer sha256: $(shasum -a 256 "$DUMPED_BUFFER" | awk '{print $1}')"
@@ -163,20 +181,19 @@ runs:
             echo "Could not dump buffer $BUFFER"
           fi
 
+          if [ "$ATTEMPT" -lt "${{ inputs.retry-attempts }}" ]; then
+            echo "Retrying the same buffer so solana CLI can write only the missing chunks"
+            ATTEMPT=$((ATTEMPT + 1))
+            continue
+          fi
+
           echo "Recent transactions for buffer $BUFFER:"
           solana transaction-history "$BUFFER" -u ${{ inputs.rpc-url }} --limit 10 || true
           echo "Open buffers still owned by deployer $DEPLOYER:"
           solana program show --buffers --buffer-authority "$DEPLOYER" -u ${{ inputs.rpc-url }} || true
           rm -f "$DUMPED_BUFFER"
           exit "$STATUS"
-        fi
-
-        if ! grep -q "Buffer:" write-buffer.log; then
-          echo "Warning: solana CLI output did not include a Buffer line; using pre-generated buffer address"
-        fi
-
-        echo "Found buffer: $BUFFER"
-        echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+        done
         rm -f "$DUMPED_BUFFER"
 
     # We can not set authority and upgrade program in the same instruction so it needs to be here
