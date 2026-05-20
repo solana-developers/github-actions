@@ -81,7 +81,7 @@ runs:
 
     - name: Write program buffer
       id: write-program-buffer
-      uses: solana-developers/github-actions/write-program-buffer@15e43c56b2ad2047dde732d807082570de2b8486
+      uses: dev-jodee/github-actions/write-program-buffer@feat/prepare-squads-release-buffer
       with:
         program-id: ${{ inputs.program-id }}
         program: ${{ inputs.program }}
