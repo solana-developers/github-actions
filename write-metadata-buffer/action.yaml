@@ -50,9 +50,22 @@ runs:
 
           echo "$OUTPUT"
 
+          if echo "$OUTPUT" | grep -q "\[Error\]"; then
+            echo "Error: program-metadata create-buffer reported a failed transaction"
+            exit 1
+          fi
+
           BUFFER=$(echo "$OUTPUT" | grep -i "buffer:" | head -1 | grep -oE '[1-9A-HJ-NP-Za-km-z]{32,44}')
           if [ -z "$BUFFER" ]; then
             echo "Error: Could not extract buffer address from output"
+            exit 1
+          fi
+
+          if ! NO_COLOR=1 npx @solana-program/program-metadata@0.5.1 fetch-buffer "$BUFFER" \
+            --keypair ./deploy-keypair.json \
+            --rpc "${{ inputs.rpc-url }}" \
+            --raw >/dev/null 2>&1; then
+            echo "Error: Metadata buffer $BUFFER was not found after create-buffer"
             exit 1
           fi
 

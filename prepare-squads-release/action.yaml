@@ -102,7 +102,7 @@ runs:
     - name: Write metadata buffer
       id: write-metadata-buffer
       if: inputs.metadata-path != ''
-      uses: solana-developers/github-actions/write-metadata-buffer@15e43c56b2ad2047dde732d807082570de2b8486
+      uses: dev-jodee/github-actions/write-metadata-buffer@feat/prepare-squads-release-buffer
       with:
         idl-path: ${{ inputs.metadata-path }}
         rpc-url: ${{ inputs.rpc-url }}
