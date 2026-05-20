@@ -36,6 +36,10 @@ inputs:
     description: "Maximum write-buffer attempts"
     required: false
     default: "3"
+  use-rpc:
+    description: "Send write transactions through the configured RPC instead of validator TPUs"
+    required: false
+    default: "true"
 
 outputs:
   buffer:
@@ -124,6 +128,12 @@ runs:
         echo "Max sign attempts: ${{ inputs.max-sign-attempts }}"
         echo "Write timeout: ${{ inputs.write-timeout-minutes }} minutes"
         echo "Write attempts: ${{ inputs.retry-attempts }}"
+        echo "Use RPC transport: ${{ inputs.use-rpc }}"
+
+        USE_RPC_ARGS=()
+        if [ "${{ inputs.use-rpc }}" = "true" ]; then
+          USE_RPC_ARGS=(--use-rpc)
+        fi
 
         ATTEMPT=1
         STATUS=1
@@ -139,7 +149,7 @@ runs:
             --buffer "$BUFFER_KEYPAIR" \
             --max-sign-attempts ${{ inputs.max-sign-attempts }} \
             --with-compute-unit-price ${{ inputs.priority-fee }} \
-            --use-rpc \
+            "${USE_RPC_ARGS[@]}" \
             2>&1 | tee "$WRITE_LOG"
           STATUS=${PIPESTATUS[0]}
           set -e

@@ -40,6 +40,10 @@ inputs:
     description: "Maximum program buffer write attempts"
     required: false
     default: "1"
+  program-buffer-use-rpc:
+    description: "Send program buffer write transactions through the configured RPC instead of validator TPUs"
+    required: false
+    default: "false"
   export-verify-pda:
     description: "Export a solana-verify PDA transaction for the Squads vault"
     required: false
@@ -93,6 +97,7 @@ runs:
         write-timeout-minutes: ${{ inputs.program-buffer-write-timeout-minutes }}
         retry-timeout-minutes: ${{ inputs.program-buffer-retry-timeout-minutes }}
         retry-attempts: ${{ inputs.program-buffer-retry-attempts }}
+        use-rpc: ${{ inputs.program-buffer-use-rpc }}
 
     - name: Write metadata buffer
       id: write-metadata-buffer
