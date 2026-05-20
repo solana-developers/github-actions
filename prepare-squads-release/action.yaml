@@ -24,6 +24,22 @@ inputs:
     description: "Priority fee in microlamports"
     required: false
     default: "100000"
+  program-buffer-max-sign-attempts:
+    description: "Maximum Solana CLI signing attempts for the program buffer"
+    required: false
+    default: "100"
+  program-buffer-write-timeout-minutes:
+    description: "Maximum minutes to let a single program buffer write run before printing diagnostics"
+    required: false
+    default: "55"
+  program-buffer-retry-timeout-minutes:
+    description: "Maximum minutes for each program buffer retry wrapper attempt"
+    required: false
+    default: "60"
+  program-buffer-retry-attempts:
+    description: "Maximum program buffer write attempts"
+    required: false
+    default: "1"
   export-verify-pda:
     description: "Export a solana-verify PDA transaction for the Squads vault"
     required: false
@@ -73,6 +89,10 @@ runs:
         keypair: ${{ inputs.keypair }}
         buffer-authority-address: ${{ inputs.squads-vault }}
         priority-fee: ${{ inputs.priority-fee }}
+        max-sign-attempts: ${{ inputs.program-buffer-max-sign-attempts }}
+        write-timeout-minutes: ${{ inputs.program-buffer-write-timeout-minutes }}
+        retry-timeout-minutes: ${{ inputs.program-buffer-retry-timeout-minutes }}
+        retry-attempts: ${{ inputs.program-buffer-retry-attempts }}
 
     - name: Write metadata buffer
       id: write-metadata-buffer

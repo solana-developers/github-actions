@@ -20,6 +20,22 @@ inputs:
     description: "Priority fee in microlamports"
     required: false
     default: "100000"
+  max-sign-attempts:
+    description: "Maximum Solana CLI signing attempts for write-buffer"
+    required: false
+    default: "100"
+  write-timeout-minutes:
+    description: "Maximum minutes to let a single write-buffer command run before printing diagnostics"
+    required: false
+    default: "55"
+  retry-timeout-minutes:
+    description: "Maximum minutes for each retry wrapper attempt"
+    required: false
+    default: "60"
+  retry-attempts:
+    description: "Maximum write-buffer attempts"
+    required: false
+    default: "3"
 
 outputs:
   buffer:
@@ -90,34 +106,52 @@ runs:
       id: write-buffer
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
-        timeout_minutes: 60
-        max_attempts: 3
+        timeout_minutes: ${{ inputs.retry-timeout-minutes }}
+        max_attempts: ${{ inputs.retry-attempts }}
         shell: bash
         command: |
-          echo "Creating program buffer... (Attempt $RETRY_ATTEMPT of 3)"
-          OUTPUT=$(solana program write-buffer \
+          set -o pipefail
+
+          BUFFER_KEYPAIR=$(mktemp ./buffer-keypair.XXXXXX.json)
+          rm -f "$BUFFER_KEYPAIR"
+          solana-keygen new --no-bip39-passphrase --silent --outfile "$BUFFER_KEYPAIR"
+          BUFFER=$(solana-keygen pubkey "$BUFFER_KEYPAIR")
+          DEPLOYER=$(solana-keygen pubkey ./deploy-keypair.json)
+
+          echo "Creating program buffer $BUFFER"
+          echo "Deployer authority: $DEPLOYER"
+          echo "Max sign attempts: ${{ inputs.max-sign-attempts }}"
+          echo "Write timeout: ${{ inputs.write-timeout-minutes }} minutes"
+
+          set +e
+          timeout "${{ inputs.write-timeout-minutes }}m" solana program write-buffer \
             ./target/deploy/${{ inputs.program }}.so \
             --url ${{ inputs.rpc-url }} \
             --keypair ./deploy-keypair.json \
-            --max-sign-attempts 100 \
+            --buffer "$BUFFER_KEYPAIR" \
+            --max-sign-attempts ${{ inputs.max-sign-attempts }} \
             --with-compute-unit-price ${{ inputs.priority-fee }} \
             --use-rpc \
-            2>&1)
+            2>&1 | tee write-buffer.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
 
-          # Print output in real-time
-          echo "$OUTPUT"
-
-          # Check for success
-          if ! echo "$OUTPUT" | grep -q "Buffer:"; then
-            echo "Error: Buffer creation failed"
-            exit 1
+          if [ "$STATUS" -eq 124 ]; then
+            echo "Error: Buffer creation timed out after ${{ inputs.write-timeout-minutes }} minutes"
           fi
 
-          # Extract buffer if successful
-          BUFFER=$(echo "$OUTPUT" | grep "Buffer:" | cut -d " " -f2)
-          if [ -z "$BUFFER" ]; then
-            echo "Error: Could not extract buffer address"
-            exit 1
+          if [ "$STATUS" -ne 0 ]; then
+            echo "Error: Buffer creation failed with exit code $STATUS"
+            echo "Buffer account: $BUFFER"
+            echo "Recent transactions for buffer $BUFFER:"
+            solana transaction-history "$BUFFER" -u ${{ inputs.rpc-url }} --limit 10 || true
+            echo "Open buffers still owned by deployer $DEPLOYER:"
+            solana program show --buffers --buffer-authority "$DEPLOYER" -u ${{ inputs.rpc-url }} || true
+            exit "$STATUS"
+          fi
+
+          if ! grep -q "Buffer:" write-buffer.log; then
+            echo "Warning: solana CLI output did not include a Buffer line; using pre-generated buffer address"
           fi
 
           echo "Found buffer: $BUFFER"
@@ -147,3 +181,4 @@ runs:
       run: |
         rm -f ./deploy-keypair.json
         rm -f ./authority-keypair.json
+        rm -f ./buffer-keypair.*.json
