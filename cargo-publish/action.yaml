@@ -1,0 +1,189 @@
+name: "Cargo Publish"
+description: "Publishes one Rust crate to crates.io using Trusted Publishing"
+inputs:
+  package:
+    description: "Package name to publish. Leave empty to infer from the current package."
+    required: false
+    default: ""
+  working-directory:
+    description: "Directory containing the Cargo manifest or workspace."
+    required: false
+    default: "."
+  toolchain:
+    description: "Rust toolchain to install and use."
+    required: false
+    default: "stable"
+  build-command:
+    description: "Build command to run before publishing. Leave empty to skip."
+    required: false
+    default: "cargo build"
+  locked:
+    description: "Pass --locked to cargo publish."
+    required: false
+    default: "true"
+  allow-dirty:
+    description: "Pass --allow-dirty to cargo publish."
+    required: false
+    default: "false"
+  dry-run:
+    description: "Run publish validation without publishing to crates.io."
+    required: false
+    default: "false"
+  check-version-available:
+    description: "Fail early when this crate version already exists on crates.io."
+    required: false
+    default: "true"
+  skip-existing:
+    description: "Skip publishing successfully when this crate version already exists on crates.io."
+    required: false
+    default: "false"
+outputs:
+  package:
+    description: "Published package name."
+    value: ${{ steps.package.outputs.package }}
+  version:
+    description: "Published package version."
+    value: ${{ steps.package.outputs.version }}
+  published:
+    description: "Whether the action published to crates.io."
+    value: ${{ steps.status.outputs.published }}
+  already-published:
+    description: "Whether this crate version already existed on crates.io."
+    value: ${{ steps.version_exists.outputs.exists }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+      with:
+        toolchain: ${{ inputs.toolchain }}
+
+    - name: Show Cargo version
+      shell: bash
+      run: cargo --version
+
+    - name: Run build command
+      if: inputs.build-command != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        ${{ inputs.build-command }}
+
+    - name: Resolve package version
+      id: package
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+
+        PACKAGE_INPUT="${{ inputs.package }}"
+        if [ -n "$PACKAGE_INPUT" ]; then
+          if ! PKG_ID="$(cargo pkgid -p "$PACKAGE_INPUT" 2>&1)"; then
+            echo "$PKG_ID"
+            echo "::error::Could not resolve package '$PACKAGE_INPUT'."
+            exit 1
+          fi
+        else
+          if ! PKG_ID="$(cargo pkgid 2>&1)"; then
+            echo "$PKG_ID"
+            echo "::error::Could not infer package. Set the package input when publishing from a workspace root."
+            exit 1
+          fi
+        fi
+
+        NAME_VERSION="${PKG_ID##*#}"
+        PACKAGE="${NAME_VERSION%@*}"
+        VERSION="${NAME_VERSION##*@}"
+
+        if [ -z "$PACKAGE" ] || [ -z "$VERSION" ] || [ "$PACKAGE" = "$NAME_VERSION" ] || [ "$VERSION" = "$NAME_VERSION" ]; then
+          echo "::error::Could not parse package and version from cargo pkgid output: $PKG_ID"
+          exit 1
+        fi
+
+        echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Publishing target: $PACKAGE@$VERSION"
+
+    - name: Verify crate package
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+
+        PUBLISH_ARGS=(-p "${{ steps.package.outputs.package }}")
+        if [ "${{ inputs.locked }}" = "true" ]; then
+          PUBLISH_ARGS+=(--locked)
+        fi
+        if [ "${{ inputs.allow-dirty }}" = "true" ]; then
+          PUBLISH_ARGS+=(--allow-dirty)
+        fi
+
+        cargo publish "${PUBLISH_ARGS[@]}" --dry-run
+
+    - name: Check crates.io version availability
+      id: version_exists
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ "${{ inputs.check-version-available }}" != "true" ] && [ "${{ inputs.skip-existing }}" != "true" ]; then
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        REGISTRY_CHECK_DIR="${RUNNER_TEMP:-/tmp}"
+        PACKAGE="${{ steps.package.outputs.package }}"
+        VERSION="${{ steps.package.outputs.version }}"
+
+        if (cd "$REGISTRY_CHECK_DIR" && cargo info "$PACKAGE@$VERSION" >/dev/null 2>&1); then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.skip-existing }}" = "true" ]; then
+            echo "$PACKAGE@$VERSION already exists on crates.io; skipping publish."
+            exit 0
+          fi
+
+          echo "::error::$PACKAGE@$VERSION already exists on crates.io. Bump the crate version before publishing."
+          exit 1
+        fi
+
+        echo "exists=false" >> "$GITHUB_OUTPUT"
+
+    - name: Authenticate crates.io trusted publisher
+      if: inputs.dry-run != 'true' && steps.version_exists.outputs.exists != 'true'
+      id: crates_io_auth
+      uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
+
+    - name: Publish to crates.io
+      if: inputs.dry-run != 'true' && steps.version_exists.outputs.exists != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+      run: |
+        set -euo pipefail
+
+        PUBLISH_ARGS=(-p "${{ steps.package.outputs.package }}")
+        if [ "${{ inputs.locked }}" = "true" ]; then
+          PUBLISH_ARGS+=(--locked)
+        fi
+        if [ "${{ inputs.allow-dirty }}" = "true" ]; then
+          PUBLISH_ARGS+=(--allow-dirty)
+        fi
+
+        cargo publish "${PUBLISH_ARGS[@]}"
+
+    - name: Set publish status
+      id: status
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "published=false" >> "$GITHUB_OUTPUT"
+        elif [ "${{ steps.version_exists.outputs.exists }}" = "true" ]; then
+          echo "published=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "published=true" >> "$GITHUB_OUTPUT"
+        fi

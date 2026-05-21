@@ -82,6 +82,74 @@ Customize the workflow to your needs!
     - `program`: Program name to build
     - `features`: Optional Cargo features to enable
 
+### Cargo Publishing
+
+- `cargo-publish`: Publishes one Rust crate to crates.io using Trusted Publishing
+  - Uses GitHub OIDC and `rust-lang/crates-io-auth-action`
+  - Runs a build command and `cargo publish --dry-run` before publishing
+  - Optionally checks whether the crate version already exists on crates.io
+  - Leaves checkout, tests, generated clients, tags, and GitHub releases to the caller workflow
+  - Inputs:
+    - `package`: Package name to publish, or empty to infer from the current package
+    - `working-directory`: Directory containing the Cargo manifest or workspace
+    - `toolchain`: Rust toolchain to install and use
+    - `build-command`: Build command to run before publishing, or empty to skip
+    - `locked`: Pass `--locked` to `cargo publish`
+    - `allow-dirty`: Pass `--allow-dirty` to `cargo publish`
+    - `dry-run`: Validate without publishing to crates.io
+    - `check-version-available`: Fail early when this crate version already exists on crates.io
+    - `skip-existing`: Skip publishing successfully when this crate version already exists on crates.io
+  - Outputs:
+    - `package`: Published package name
+    - `version`: Published package version
+    - `published`: Whether the action published to crates.io
+    - `already-published`: Whether this crate version already existed on crates.io
+
+Caller workflows must grant OIDC token access and configure Trusted Publishing for the crate on crates.io. The Trusted Publisher configuration should match the caller repository and workflow file, not this shared action repository:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Single crate:
+
+```yaml
+- uses: actions/checkout@v6
+
+- uses: solana-developers/github-actions/cargo-publish@main
+  with:
+    package: solana-keychain
+    working-directory: rust
+```
+
+Workspace package:
+
+```yaml
+- uses: actions/checkout@v6
+
+- uses: solana-developers/github-actions/cargo-publish@main
+  with:
+    package: kora-lib
+    build-command: cargo build --workspace
+```
+
+Generated client:
+
+```yaml
+- uses: actions/checkout@v6
+
+- run: pnpm run generate-clients
+
+- uses: solana-developers/github-actions/cargo-publish@main
+  with:
+    package: subscriptions
+    working-directory: clients/rust
+    allow-dirty: "true"
+    skip-existing: "true"
+```
+
 ### Deployment
 
 - `write-program-buffer`: Writes a buffer that will then later be set either from the provided keypair or from the squads multisig
