@@ -20,6 +20,22 @@ inputs:
     description: "Priority fee in microlamports"
     required: false
     default: "100000"
+  max-sign-attempts:
+    description: "Maximum Solana CLI signing attempts for write-buffer"
+    required: false
+    default: "100"
+  write-timeout-minutes:
+    description: "Maximum minutes to let a single write-buffer command run before printing diagnostics"
+    required: false
+    default: "55"
+  retry-attempts:
+    description: "Maximum write-buffer attempts"
+    required: false
+    default: "3"
+  use-rpc:
+    description: "Send write transactions through the configured RPC instead of validator TPUs"
+    required: false
+    default: "true"
 
 outputs:
   buffer:
@@ -45,9 +61,6 @@ runs:
         echo "Checking program info..."
         PROGRAM_INFO=$(solana program show ${{ inputs.program-id }} -u ${{ inputs.rpc-url }} 2>&1)
         EXIT_CODE=$?
-        echo "Raw program info output:"
-        echo "$PROGRAM_INFO"
-
         if [ $EXIT_CODE -eq 0 ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Program exists, checking size..."
@@ -88,40 +101,102 @@ runs:
 
     - name: Write program buffer
       id: write-buffer
-      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
-      with:
-        timeout_minutes: 60
-        max_attempts: 3
-        shell: bash
-        command: |
-          echo "Creating program buffer... (Attempt $RETRY_ATTEMPT of 3)"
-          OUTPUT=$(solana program write-buffer \
-            ./target/deploy/${{ inputs.program }}.so \
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        PROGRAM_SO="./target/deploy/${{ inputs.program }}.so"
+        BUFFER_KEYPAIR=$(mktemp ./buffer-keypair.XXXXXX.json)
+        rm -f "$BUFFER_KEYPAIR"
+        solana-keygen new --no-bip39-passphrase --silent --outfile "$BUFFER_KEYPAIR"
+        BUFFER=$(solana-keygen pubkey "$BUFFER_KEYPAIR")
+        DEPLOYER=$(solana-keygen pubkey ./deploy-keypair.json)
+        DUMPED_BUFFER=$(mktemp ./buffer-dump.XXXXXX.so)
+
+        echo "Creating program buffer $BUFFER"
+        echo "Deployer authority: $DEPLOYER"
+        echo "Program artifact size: $(wc -c < "$PROGRAM_SO") bytes"
+        echo "Program artifact sha256: $(shasum -a 256 "$PROGRAM_SO" | awk '{print $1}')"
+        echo "Max sign attempts: ${{ inputs.max-sign-attempts }}"
+        echo "Write timeout: ${{ inputs.write-timeout-minutes }} minutes"
+        echo "Write attempts: ${{ inputs.retry-attempts }}"
+        echo "Use RPC transport: ${{ inputs.use-rpc }}"
+
+        USE_RPC_ARGS=()
+        if [ "${{ inputs.use-rpc }}" = "true" ]; then
+          USE_RPC_ARGS=(--use-rpc)
+        fi
+
+        ATTEMPT=1
+        STATUS=1
+        while [ "$ATTEMPT" -le "${{ inputs.retry-attempts }}" ]; do
+          WRITE_LOG="write-buffer-${ATTEMPT}.log"
+          echo "Starting write attempt $ATTEMPT of ${{ inputs.retry-attempts }} for buffer $BUFFER"
+
+          set +e
+          timeout "${{ inputs.write-timeout-minutes }}m" solana program write-buffer \
+            "$PROGRAM_SO" \
             --url ${{ inputs.rpc-url }} \
             --keypair ./deploy-keypair.json \
-            --max-sign-attempts 100 \
+            --buffer "$BUFFER_KEYPAIR" \
+            --max-sign-attempts ${{ inputs.max-sign-attempts }} \
             --with-compute-unit-price ${{ inputs.priority-fee }} \
-            --use-rpc \
-            2>&1)
+            "${USE_RPC_ARGS[@]}" \
+            2>&1 | tee "$WRITE_LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
 
-          # Print output in real-time
-          echo "$OUTPUT"
+          if [ "$STATUS" -eq 0 ]; then
+            if ! grep -q "Buffer:" "$WRITE_LOG"; then
+              echo "Warning: solana CLI output did not include a Buffer line; using pre-generated buffer address"
+            fi
 
-          # Check for success
-          if ! echo "$OUTPUT" | grep -q "Buffer:"; then
-            echo "Error: Buffer creation failed"
-            exit 1
+            echo "Found buffer: $BUFFER"
+            echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+            rm -f "$DUMPED_BUFFER"
+            exit 0
           fi
 
-          # Extract buffer if successful
-          BUFFER=$(echo "$OUTPUT" | grep "Buffer:" | cut -d " " -f2)
-          if [ -z "$BUFFER" ]; then
-            echo "Error: Could not extract buffer address"
-            exit 1
+          if [ "$STATUS" -eq 124 ]; then
+            echo "Error: Buffer write attempt $ATTEMPT timed out after ${{ inputs.write-timeout-minutes }} minutes"
+          else
+            echo "Error: Buffer write attempt $ATTEMPT failed with exit code $STATUS"
           fi
 
-          echo "Found buffer: $BUFFER"
-          echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+          echo "Buffer account: $BUFFER"
+          echo "Checking whether the buffer was written despite the CLI exit status..."
+
+          rm -f "$DUMPED_BUFFER"
+          if solana program dump "$BUFFER" "$DUMPED_BUFFER" -u ${{ inputs.rpc-url }}; then
+            echo "Dumped buffer size: $(wc -c < "$DUMPED_BUFFER") bytes"
+            echo "Dumped buffer sha256: $(shasum -a 256 "$DUMPED_BUFFER" | awk '{print $1}')"
+
+            if cmp -s "$PROGRAM_SO" "$DUMPED_BUFFER"; then
+              echo "Buffer contents match the program artifact; continuing with buffer $BUFFER"
+              echo "buffer=$BUFFER" >> $GITHUB_OUTPUT
+              rm -f "$DUMPED_BUFFER"
+              exit 0
+            fi
+
+            echo "Dumped buffer does not match the program artifact"
+          else
+            echo "Could not dump buffer $BUFFER"
+          fi
+
+          if [ "$ATTEMPT" -lt "${{ inputs.retry-attempts }}" ]; then
+            echo "Retrying the same buffer so solana CLI can write only the missing chunks"
+            ATTEMPT=$((ATTEMPT + 1))
+            continue
+          fi
+
+          echo "Recent transactions for buffer $BUFFER:"
+          solana transaction-history "$BUFFER" -u ${{ inputs.rpc-url }} --limit 10 || true
+          echo "Open buffers still owned by deployer $DEPLOYER:"
+          solana program show --buffers --buffer-authority "$DEPLOYER" -u ${{ inputs.rpc-url }} || true
+          rm -f "$DUMPED_BUFFER"
+          exit "$STATUS"
+        done
+        rm -f "$DUMPED_BUFFER"
 
     # We can not set authority and upgrade program in the same instruction so it needs to be here
     # The rent for the buffer will be returned to the local keypair though once the program gets deployed in squads. So its fine.
@@ -147,3 +222,4 @@ runs:
       run: |
         rm -f ./deploy-keypair.json
         rm -f ./authority-keypair.json
+        rm -f ./buffer-keypair.*.json
