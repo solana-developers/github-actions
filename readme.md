@@ -82,6 +82,89 @@ Customize the workflow to your needs!
     - `program`: Program name to build
     - `features`: Optional Cargo features to enable
 
+### Cargo Publishing
+
+- `cargo-publish`: Publishes one Rust crate to crates.io using Trusted Publishing
+  - Uses GitHub OIDC and `rust-lang/crates-io-auth-action`
+  - Runs `cargo publish --dry-run` before publishing
+  - Optionally checks whether the crate version already exists on crates.io
+  - Leaves checkout, tests, generated clients, tags, and GitHub releases to the caller workflow
+  - Inputs:
+    - `package`: Package name to publish, or empty to infer from the current package
+    - `working-directory`: Directory containing the Cargo manifest or workspace
+    - `toolchain`: Rust toolchain to install and use
+    - `locked`: Pass `--locked` to `cargo publish`
+    - `allow-dirty`: Pass `--allow-dirty` to `cargo publish` for generated files that are created during the workflow and are intentionally not checked into source control
+    - `dry-run`: Validate without publishing to crates.io
+    - `check-version-available`: Fail early when this crate version already exists on crates.io
+    - `skip-existing`: Skip publishing successfully when this crate version already exists on crates.io
+  - Outputs:
+    - `package`: Published package name
+    - `version`: Published package version
+    - `published`: Whether the action published to crates.io
+    - `already-published`: Whether this crate version already existed on crates.io
+
+Caller workflows must grant OIDC token access and configure Trusted Publishing for the crate on crates.io. The Trusted Publisher configuration should match the caller repository and workflow file, not this shared action repository:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Pin this action to a released tag or commit SHA instead of `main`.
+
+Only set `allow-dirty: "true"` when a prior workflow step intentionally generated files that must be included in the crate but are not checked into source control.
+
+Single crate:
+
+```yaml
+- uses: actions/checkout@v6
+
+- name: Build package
+  working-directory: path/to/package
+  run: cargo build
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
+  with:
+    package: my-crate
+    working-directory: path/to/package
+```
+
+Workspace package:
+
+```yaml
+- uses: actions/checkout@v6
+
+- name: Build workspace
+  working-directory: path/to/workspace
+  run: cargo build --workspace
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
+  with:
+    package: my-workspace-crate
+    working-directory: path/to/workspace
+```
+
+Generated client:
+
+```yaml
+- uses: actions/checkout@v6
+
+- run: pnpm run generate-clients
+
+- name: Build generated client
+  working-directory: path/to/generated-crate
+  run: cargo build
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
+  with:
+    package: my-generated-crate
+    working-directory: path/to/generated-crate
+    allow-dirty: "true"
+    skip-existing: "true"
+```
+
 ### Deployment
 
 - `write-program-buffer`: Writes a buffer that will then later be set either from the provided keypair or from the squads multisig
@@ -172,9 +255,11 @@ These actions use the [program-metadata](https://github.com/solana-program/progr
 
 For teams that do not want to add a CI-owned keypair as a Squads proposer, use `prepare-squads-release`. The keypair only pays for buffer preparation transactions. The resulting program buffer is owned by the Squads vault, and the upgrade proposal can be created manually in Squads.
 
+Pin this action to a released tag or commit SHA instead of `main`.
+
 ```yaml
 - name: Prepare Squads release buffers
-  uses: solana-developers/github-actions/prepare-squads-release@main
+  uses: solana-developers/github-actions/prepare-squads-release@<release-tag-or-commit-sha>
   with:
     program: ${{ env.PROGRAM }}
     program-id: ${{ env.PROGRAM_ID }}
