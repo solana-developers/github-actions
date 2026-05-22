@@ -255,9 +255,11 @@ These actions use the [program-metadata](https://github.com/solana-program/progr
 
 For teams that do not want to add a CI-owned keypair as a Squads proposer, use `prepare-squads-release`. The keypair only pays for buffer preparation transactions. The resulting program buffer is owned by the Squads vault, and the upgrade proposal can be created manually in Squads.
 
+Pin this action to a released tag or commit SHA instead of `main`.
+
 ```yaml
 - name: Prepare Squads release buffers
-  uses: solana-developers/github-actions/prepare-squads-release@main
+  uses: solana-developers/github-actions/prepare-squads-release@<release-tag-or-commit-sha>
   with:
     program: ${{ env.PROGRAM }}
     program-id: ${{ env.PROGRAM_ID }}
