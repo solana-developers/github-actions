@@ -13,10 +13,6 @@ inputs:
     description: "Rust toolchain to install and use."
     required: false
     default: "stable"
-  build-command:
-    description: "Build command to run before publishing. Leave empty to skip."
-    required: false
-    default: "cargo build"
   locked:
     description: "Pass --locked to cargo publish."
     required: false
@@ -55,30 +51,27 @@ runs:
   using: "composite"
   steps:
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
-      with:
-        toolchain: ${{ inputs.toolchain }}
+      shell: bash
+      env:
+        RUST_TOOLCHAIN: ${{ inputs.toolchain }}
+      run: |
+        set -euo pipefail
+        rustup toolchain install --profile minimal --no-self-update "$RUST_TOOLCHAIN"
+        rustup default "$RUST_TOOLCHAIN"
 
     - name: Show Cargo version
       shell: bash
       run: cargo --version
 
-    - name: Run build command
-      if: inputs.build-command != ''
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: |
-        set -euo pipefail
-        ${{ inputs.build-command }}
-
     - name: Resolve package version
       id: package
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      env:
+        PACKAGE_INPUT: ${{ inputs.package }}
       run: |
         set -euo pipefail
 
-        PACKAGE_INPUT="${{ inputs.package }}"
         if [ -n "$PACKAGE_INPUT" ]; then
           if ! PKG_ID="$(cargo pkgid -p "$PACKAGE_INPUT" 2>&1)"; then
             echo "$PKG_ID"
@@ -109,14 +102,18 @@ runs:
     - name: Verify crate package
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      env:
+        ALLOW_DIRTY: ${{ inputs.allow-dirty }}
+        LOCKED: ${{ inputs.locked }}
+        PACKAGE: ${{ steps.package.outputs.package }}
       run: |
         set -euo pipefail
 
-        PUBLISH_ARGS=(-p "${{ steps.package.outputs.package }}")
-        if [ "${{ inputs.locked }}" = "true" ]; then
+        PUBLISH_ARGS=(-p "$PACKAGE")
+        if [ "$LOCKED" = "true" ]; then
           PUBLISH_ARGS+=(--locked)
         fi
-        if [ "${{ inputs.allow-dirty }}" = "true" ]; then
+        if [ "$ALLOW_DIRTY" = "true" ]; then
           PUBLISH_ARGS+=(--allow-dirty)
         fi
 
@@ -125,21 +122,24 @@ runs:
     - name: Check crates.io version availability
       id: version_exists
       shell: bash
+      env:
+        CHECK_VERSION_AVAILABLE: ${{ inputs.check-version-available }}
+        PACKAGE: ${{ steps.package.outputs.package }}
+        SKIP_EXISTING: ${{ inputs.skip-existing }}
+        VERSION: ${{ steps.package.outputs.version }}
       run: |
         set -euo pipefail
 
-        if [ "${{ inputs.check-version-available }}" != "true" ] && [ "${{ inputs.skip-existing }}" != "true" ]; then
+        if [ "$CHECK_VERSION_AVAILABLE" != "true" ] && [ "$SKIP_EXISTING" != "true" ]; then
           echo "exists=false" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
         REGISTRY_CHECK_DIR="${RUNNER_TEMP:-/tmp}"
-        PACKAGE="${{ steps.package.outputs.package }}"
-        VERSION="${{ steps.package.outputs.version }}"
 
         if (cd "$REGISTRY_CHECK_DIR" && cargo info "$PACKAGE@$VERSION" >/dev/null 2>&1); then
           echo "exists=true" >> "$GITHUB_OUTPUT"
-          if [ "${{ inputs.skip-existing }}" = "true" ]; then
+          if [ "$SKIP_EXISTING" = "true" ]; then
             echo "$PACKAGE@$VERSION already exists on crates.io; skipping publish."
             exit 0
           fi
@@ -160,15 +160,18 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
+        ALLOW_DIRTY: ${{ inputs.allow-dirty }}
         CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        LOCKED: ${{ inputs.locked }}
+        PACKAGE: ${{ steps.package.outputs.package }}
       run: |
         set -euo pipefail
 
-        PUBLISH_ARGS=(-p "${{ steps.package.outputs.package }}")
-        if [ "${{ inputs.locked }}" = "true" ]; then
+        PUBLISH_ARGS=(-p "$PACKAGE")
+        if [ "$LOCKED" = "true" ]; then
           PUBLISH_ARGS+=(--locked)
         fi
-        if [ "${{ inputs.allow-dirty }}" = "true" ]; then
+        if [ "$ALLOW_DIRTY" = "true" ]; then
           PUBLISH_ARGS+=(--allow-dirty)
         fi
 
@@ -177,12 +180,15 @@ runs:
     - name: Set publish status
       id: status
       shell: bash
+      env:
+        DRY_RUN: ${{ inputs.dry-run }}
+        VERSION_EXISTS: ${{ steps.version_exists.outputs.exists }}
       run: |
         set -euo pipefail
 
-        if [ "${{ inputs.dry-run }}" = "true" ]; then
+        if [ "$DRY_RUN" = "true" ]; then
           echo "published=false" >> "$GITHUB_OUTPUT"
-        elif [ "${{ steps.version_exists.outputs.exists }}" = "true" ]; then
+        elif [ "$VERSION_EXISTS" = "true" ]; then
           echo "published=false" >> "$GITHUB_OUTPUT"
         else
           echo "published=true" >> "$GITHUB_OUTPUT"

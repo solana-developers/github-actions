@@ -86,16 +86,15 @@ Customize the workflow to your needs!
 
 - `cargo-publish`: Publishes one Rust crate to crates.io using Trusted Publishing
   - Uses GitHub OIDC and `rust-lang/crates-io-auth-action`
-  - Runs a build command and `cargo publish --dry-run` before publishing
+  - Runs `cargo publish --dry-run` before publishing
   - Optionally checks whether the crate version already exists on crates.io
   - Leaves checkout, tests, generated clients, tags, and GitHub releases to the caller workflow
   - Inputs:
     - `package`: Package name to publish, or empty to infer from the current package
     - `working-directory`: Directory containing the Cargo manifest or workspace
     - `toolchain`: Rust toolchain to install and use
-    - `build-command`: Build command to run before publishing, or empty to skip
     - `locked`: Pass `--locked` to `cargo publish`
-    - `allow-dirty`: Pass `--allow-dirty` to `cargo publish`
+    - `allow-dirty`: Pass `--allow-dirty` to `cargo publish` for generated files that are created during the workflow and are intentionally not checked into source control
     - `dry-run`: Validate without publishing to crates.io
     - `check-version-available`: Fail early when this crate version already exists on crates.io
     - `skip-existing`: Skip publishing successfully when this crate version already exists on crates.io
@@ -113,15 +112,23 @@ permissions:
   id-token: write
 ```
 
+Pin this action to a released tag or commit SHA instead of `main`.
+
+Only set `allow-dirty: "true"` when a prior workflow step intentionally generated files that must be included in the crate but are not checked into source control.
+
 Single crate:
 
 ```yaml
 - uses: actions/checkout@v6
 
-- uses: solana-developers/github-actions/cargo-publish@main
+- name: Build package
+  working-directory: path/to/package
+  run: cargo build
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
   with:
-    package: solana-keychain
-    working-directory: rust
+    package: my-crate
+    working-directory: path/to/package
 ```
 
 Workspace package:
@@ -129,10 +136,14 @@ Workspace package:
 ```yaml
 - uses: actions/checkout@v6
 
-- uses: solana-developers/github-actions/cargo-publish@main
+- name: Build workspace
+  working-directory: path/to/workspace
+  run: cargo build --workspace
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
   with:
-    package: kora-lib
-    build-command: cargo build --workspace
+    package: my-workspace-crate
+    working-directory: path/to/workspace
 ```
 
 Generated client:
@@ -142,10 +153,14 @@ Generated client:
 
 - run: pnpm run generate-clients
 
-- uses: solana-developers/github-actions/cargo-publish@main
+- name: Build generated client
+  working-directory: path/to/generated-crate
+  run: cargo build
+
+- uses: solana-developers/github-actions/cargo-publish@<release-tag-or-commit-sha>
   with:
-    package: subscriptions
-    working-directory: clients/rust
+    package: my-generated-crate
+    working-directory: path/to/generated-crate
     allow-dirty: "true"
     skip-existing: "true"
 ```
