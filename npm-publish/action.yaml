@@ -138,12 +138,14 @@ runs:
       run: |
         set -euo pipefail
 
-        if tar -xzOf "$TARBALL" package/package.json | grep -q '"workspace:'; then
+        MANIFEST="$(tar -xzOf "$TARBALL" package/package.json)"
+        if grep -q '"workspace:' <<< "$MANIFEST"; then
           echo "::error::Tarball contains unresolved workspace: protocol dependencies."
           exit 1
         fi
 
-        if ! tar -tzf "$TARBALL" | grep -q '^package/dist/'; then
+        CONTENTS="$(tar -tzf "$TARBALL")"
+        if ! grep -q '^package/dist/' <<< "$CONTENTS"; then
           echo "::error::Tarball does not contain any dist/ build artifacts."
           exit 1
         fi
