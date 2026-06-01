@@ -165,6 +165,83 @@ Generated client:
     skip-existing: "true"
 ```
 
+### NPM Publishing
+
+- `npm-publish`: Publishes one TypeScript package to npm with pnpm using Trusted Publishing
+  - Uses GitHub OIDC and npm provenance, with no `NODE_AUTH_TOKEN`
+  - Packs and validates the tarball, then publishes the built package
+  - Resolves the npm dist-tag automatically (`beta` for prerelease versions, otherwise `latest`)
+  - Optionally checks whether the package version already exists on npm
+  - Leaves checkout, install, build, tests, generated clients, tags, and GitHub releases to the caller workflow
+  - Inputs:
+    - `package`: Package name to publish, or empty to infer from the package manifest
+    - `package-directory`: Directory containing the built package manifest to pack and publish
+    - `node-version`: Node.js version to install
+    - `pnpm-version`: pnpm version to install, or empty to use the `packageManager` field
+    - `tag`: npm dist-tag to publish under, or empty to resolve automatically
+    - `dry-run`: Validate without publishing to npm
+    - `check-version-available`: Fail early when this package version already exists on npm
+    - `skip-existing`: Skip publishing successfully when this package version already exists on npm
+  - Outputs:
+    - `package`: Published package name
+    - `version`: Published package version
+    - `tag`: npm dist-tag used for publishing
+    - `published`: Whether the action published to npm
+    - `already-published`: Whether this package version already existed on npm
+
+Caller workflows must grant OIDC token access and configure Trusted Publishing for the package on npm. The Trusted Publisher configuration should match the caller repository and workflow file, not this shared action repository:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Trusted Publishing requires npm 11.5.1 or newer. The action upgrades npm when the installed version is older, so `node-version: lts/*` works without a token.
+
+Pin this action to a released tag or commit SHA instead of `main`.
+
+The caller installs dependencies and builds the package before invoking the action.
+
+Single package:
+
+```yaml
+- uses: actions/checkout@v6
+
+- uses: pnpm/action-setup@v6
+
+- run: pnpm install --frozen-lockfile
+
+- name: Build package
+  run: pnpm --filter "@scope/my-package" build
+
+- uses: solana-developers/github-actions/npm-publish@<release-tag-or-commit-sha>
+  with:
+    package: "@scope/my-package"
+    package-directory: clients/typescript
+```
+
+Generated client:
+
+```yaml
+- uses: actions/checkout@v6
+
+- uses: pnpm/action-setup@v6
+
+- run: pnpm install --frozen-lockfile
+
+- run: pnpm run generate-clients
+
+- name: Build generated client
+  run: pnpm --filter "@scope/my-client" build
+
+- uses: solana-developers/github-actions/npm-publish@<release-tag-or-commit-sha>
+  with:
+    package: "@scope/my-client"
+    package-directory: clients/typescript
+    skip-existing: "true"
+```
+
 ### Deployment
 
 - `write-program-buffer`: Writes a buffer that will then later be set either from the provided keypair or from the squads multisig
