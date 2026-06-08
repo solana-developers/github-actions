@@ -1,0 +1,214 @@
+name: "CU Benchmark Report"
+description: "Diffs a freshly generated compute-unit report against the committed baseline, posts an upsert PR comment with per-instruction deltas, and refreshes the baseline on same-repo PRs."
+
+inputs:
+  report-path:
+    description: "Override for the generated CU report path. Leave empty to auto-discover a single cu_report.md (set this only when a repo emits several). The baseline is its sibling cu_baseline.md."
+    required: false
+    default: ""
+  commit-baseline:
+    description: "Opt-in: auto-commit the refreshed baseline to the head branch. Requires `contents: write` and a same-repo check (forks skip). False = comment-only."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Locate report and baseline
+      shell: bash
+      env:
+        REPORT_PATH_INPUT: ${{ inputs.report-path }}
+      run: |
+        set -euo pipefail
+        REPORT_PATH="$REPORT_PATH_INPUT"
+        if [ -z "$REPORT_PATH" ]; then
+          found="$(find . -name cu_report.md \
+            -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/.git/*')"
+          count="$(printf '%s\n' "$found" | grep -c . || true)"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No cu_report.md found; set report-path." >&2
+            exit 1
+          fi
+          if [ "$count" -gt 1 ]; then
+            echo "::error::Multiple cu_report.md found; set report-path. Found: $found" >&2
+            exit 1
+          fi
+          REPORT_PATH="${found#./}"
+        fi
+        if [ ! -f "$REPORT_PATH" ]; then
+          echo "::error::Report not found at $REPORT_PATH" >&2
+          exit 1
+        fi
+        BASELINE_PATH="$(dirname "$REPORT_PATH")/cu_baseline.md"
+        echo "REPORT_PATH=$REPORT_PATH" >> "$GITHUB_ENV"
+        echo "BASELINE_PATH=$BASELINE_PATH" >> "$GITHUB_ENV"
+        echo "Report: $REPORT_PATH"
+        echo "Baseline: $BASELINE_PATH"
+
+    - name: Read baseline from base branch
+      shell: bash
+      env:
+        BASE_REF: main
+      run: |
+        set -euo pipefail
+        BASELINE_FROM_BASE="$(mktemp)"
+        if git fetch origin "$BASE_REF" --depth=1 2>/dev/null \
+          && git show "FETCH_HEAD:$BASELINE_PATH" > "$BASELINE_FROM_BASE" 2>/dev/null; then
+          echo "Baseline found on $BASE_REF."
+        else
+          : > "$BASELINE_FROM_BASE"
+          echo "No baseline on $BASE_REF; treating all instructions as new."
+        fi
+        echo "BASELINE_FROM_BASE=$BASELINE_FROM_BASE" >> "$GITHUB_ENV"
+
+    - name: Render comment with deltas
+      shell: bash
+      env:
+        MARKER: "<!-- cu-report -->"
+        BASE_REF: main
+      run: |
+        set -euo pipefail
+        COMMENT_BODY="$(mktemp)"
+        echo "COMMENT_BODY=$COMMENT_BODY" >> "$GITHUB_ENV"
+        python3 - "$REPORT_PATH" "$BASELINE_FROM_BASE" "$COMMENT_BODY" <<'PY'
+        import sys
+
+        report_path, baseline_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+        import os
+        marker = os.environ["MARKER"]
+        base_ref = os.environ["BASE_REF"]
+
+        def parse_table(text):
+            rows = [l.strip() for l in text.splitlines() if l.strip().startswith("|")]
+            if not rows:
+                return [], []
+            def cells(line):
+                return [c.strip() for c in line.strip().strip("|").split("|")]
+            header = cells(rows[0])
+            body = []
+            for line in rows[1:]:
+                cs = cells(line)
+                if all(set(c) <= set("-: ") for c in cs):
+                    continue
+                body.append(cs)
+            return header, body
+
+        def find_footer(text):
+            for line in text.splitlines():
+                if line.strip().startswith("*Generated:"):
+                    return line.strip()
+            return ""
+
+        with open(report_path) as f:
+            report_text = f.read()
+        with open(baseline_path) as f:
+            baseline_text = f.read()
+
+        header, rows = parse_table(report_text)
+        b_header, b_rows = parse_table(baseline_text)
+
+        def col_index(hdr, name):
+            return hdr.index(name) if name in hdr else None
+
+        ix_i = col_index(header, "Instruction")
+        avg_i = col_index(header, "Avg CUs")
+
+        baseline_avg = {}
+        if b_header and ix_i is not None:
+            b_ix = col_index(b_header, "Instruction")
+            b_avg = col_index(b_header, "Avg CUs")
+            if b_ix is not None and b_avg is not None:
+                for r in b_rows:
+                    try:
+                        baseline_avg[r[b_ix]] = int(r[b_avg])
+                    except (ValueError, IndexError):
+                        pass
+
+        def delta_cell(name, avg_str):
+            if name not in baseline_avg:
+                return "🆕"
+            try:
+                d = int(avg_str) - baseline_avg[name]
+            except ValueError:
+                return ""
+            if d > 0:
+                return f"🔺 +{d}"
+            if d < 0:
+                return f"🔻 {d}"
+            return "–"
+
+        out = [marker, "", "## Compute Unit Report", ""]
+        if not header:
+            out.append("_No CU measurements recorded._")
+        else:
+            new_header = header[:]
+            delta_label = f"Δ Avg vs `{base_ref}`"
+            insert_at = (avg_i + 1) if avg_i is not None else len(new_header)
+            new_header.insert(insert_at, delta_label)
+            out.append("| " + " | ".join(new_header) + " |")
+            out.append("|" + "|".join(["---"] * len(new_header)) + "|")
+            present = set()
+            for r in rows:
+                name = r[ix_i] if ix_i is not None else ""
+                present.add(name)
+                cell = delta_cell(name, r[avg_i]) if avg_i is not None else ""
+                row = r[:]
+                row.insert(insert_at, cell)
+                out.append("| " + " | ".join(row) + " |")
+            removed = [n for n in baseline_avg if n not in present]
+            if removed:
+                out.append("")
+                for n in sorted(removed):
+                    out.append(f"🗑 Removed since `{base_ref}`: `{n}` (was {baseline_avg[n]} avg CUs)")
+            out.append("")
+            out.append(f"🔺 increase · 🔻 decrease · – unchanged · 🆕 new · 🗑 removed (vs `{base_ref}`)")
+
+        footer = find_footer(report_text)
+        if footer:
+            out += ["", footer]
+
+        with open(out_path, "w") as f:
+            f.write("\n".join(out) + "\n")
+        PY
+
+    - name: Upsert PR comment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        MARKER: "<!-- cu-report -->"
+      run: |
+        set -euo pipefail
+        COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+          --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)"
+        if [ -n "$COMMENT_ID" ]; then
+          gh api "repos/$REPO/issues/comments/$COMMENT_ID" -X PATCH -F body=@"$COMMENT_BODY"
+        else
+          gh api "repos/$REPO/issues/$PR/comments" -F body=@"$COMMENT_BODY"
+        fi
+
+    - name: Refresh committed baseline
+      if: ${{ inputs.commit-baseline == 'true' }}
+      shell: bash
+      env:
+        HEAD_REF: ${{ github.head_ref }}
+      run: |
+        set -euo pipefail
+        if [ -z "$HEAD_REF" ]; then
+          echo "No head ref; skipping baseline refresh."
+          exit 0
+        fi
+        git fetch origin "$HEAD_REF":"refs/heads/$HEAD_REF" --depth=1
+        git checkout "$HEAD_REF"
+        if [ -f "$BASELINE_PATH" ] && cmp -s "$REPORT_PATH" "$BASELINE_PATH"; then
+          echo "Baseline already current; nothing to commit."
+          exit 0
+        fi
+        mkdir -p "$(dirname "$BASELINE_PATH")"
+        cp "$REPORT_PATH" "$BASELINE_PATH"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "$BASELINE_PATH"
+        git commit -m "chore(cu): update CU baseline"
+        git push origin "HEAD:$HEAD_REF"
